@@ -20,94 +20,162 @@ class ResumeParser:
     def extract_candidate_profile(self, resume_text):
 
         prompt = f"""
+You are an advanced ATS Resume Parser and AI Resume Extraction Agent.
 
-You are an expert ATS Resume Parser.
+Your task is to analyze the uploaded resume and extract ONLY the information that is explicitly present in the resume.
 
-Read the following resume carefully.
+==========================
+STRICT RULES
+==========================
 
-Extract every possible detail.
+1. NEVER invent or assume any information.
+2. NEVER generate placeholder values.
+3. NEVER infer experience, skills, certifications, projects, or achievements.
+4. If a field is not present, return:
+   - null for single values
+   - [] for arrays
+5. Every extracted value must be directly supported by the resume.
+6. Do not summarize or rewrite information.
+7. Return ONLY valid JSON.
+8. Do NOT include markdown or explanations.
 
-Return ONLY VALID JSON.
-
-JSON Schema:
+==========================
+EXTRACT THE FOLLOWING
+==========================
 
 {{
-"personal_information": {{
-"full_name":"",
-"career_summary":"",
-"current_status":""
-}},
+  "PersonalInformation": {{
+    "FullName": "",
+    "DateOfBirth": null,
+    "Gender": null,
+    "Nationality": null,
+    "CurrentLocation": null
+  }},
 
-"contact_details": {{
-"email":"",
-"phone":"",
-"location":"",
-"linkedin":"",
-"github":"",
-"portfolio":""
-}},
+  "ContactDetails": {{
+    "Email": "",
+    "Phone": "",
+    "LinkedIn": "",
+    "GitHub": "",
+    "Portfolio": "",
+    "Website": "",
+    "Address": null
+  }},
 
-"education":[],
+  "Education": [
+    {{
+      "Degree": "",
+      "Specialization": "",
+      "Institution": "",
+      "University": "",
+      "CGPA": "",
+      "Percentage": "",
+      "StartYear": "",
+      "EndYear": ""
+    }}
+  ],
 
-"experience":[],
+  "Experience": [
+    {{
+      "Company": "",
+      "Role": "",
+      "EmploymentType": "",
+      "Duration": "",
+      "Responsibilities": []
+    }}
+  ],
 
-"skills":[],
+  "Skills": [],
 
-"technical_skills": {{
-"programming_languages":[],
-"frameworks":[],
-"libraries":[],
-"tools":[],
-"databases":[],
-"cloud_platforms":[]
-}},
+  "TechnicalSkills": [],
 
-"soft_skills":[],
+  "SoftSkills": [],
 
-"projects":[],
+  "Projects": [
+    {{
+      "Title": "",
+      "Description": "",
+      "TechnologiesUsed": [],
+      "GitHub": "",
+      "LiveDemo": ""
+    }}
+  ],
 
-"certifications":[],
+  "Certifications": [
+    {{
+      "Name": "",
+      "Organization": "",
+      "Year": ""
+    }}
+  ],
 
-"achievements":[],
+  "Achievements": [],
 
-"research":[],
+  "Research": [
+    {{
+      "Title": "",
+      "Publication": "",
+      "Year": ""
+    }}
+  ],
 
-"languages":[],
+  "Languages": [],
 
-"interests":[],
+  "CareerDomain": "",
 
-"career_domain":[],
+  "PreferredRoles": [],
 
-"preferred_roles":[],
+  "ResumeScore": 0,
 
-"resume_score":0,
+  "CareerReadiness": 0,
 
-"career_readiness": {{
-"overall_score":0,
-"level":"",
-"strengths":[],
-"areas_to_improve":[]
-}},
-
-"additional_metadata": {{
-"skills_count":0,
-"projects_count":0,
-"experience_count":0
+  "AdditionalMetadata": {{
+    "ResumePages": 0,
+    "DetectedSections": [],
+    "Keywords": [],
+    "PrimaryProgrammingLanguages": [],
+    "Frameworks": [],
+    "Databases": [],
+    "CloudPlatforms": [],
+    "Tools": [],
+    "VersionControl": [],
+    "OperatingSystems": []
+  }}
 }}
-}}
 
-Rules:
+==========================
+SCORING RULES
+==========================
 
-Return JSON ONLY.
+ResumeScore (0-100):
+Evaluate the overall quality of the resume based on:
+- Completeness
+- Formatting
+- Skills
+- Projects
+- Experience
+- Certifications
+- ATS Friendliness
 
-Do not explain anything.
+CareerReadiness (0-100):
+Evaluate the candidate's readiness for internships/jobs considering:
+- Skills
+- Projects
+- Experience
+- Education
+- Certifications
 
-If information is missing, use null or [].
+==========================
+IMPORTANT
+==========================
 
-Resume:
+Only ResumeScore and CareerReadiness may be AI-evaluated.
+
+Every other field MUST be extracted directly from the resume without assumptions.
+
+Return ONLY the JSON object.
 
 {resume_text}
-
 """
 
         api_key = os.getenv("GEMINI_API_KEY")
@@ -138,48 +206,44 @@ Resume:
         except json.JSONDecodeError:
             profile = {}
 
-        # â”€â”€ Inject compatibility keys for front-end rendering â”€â”€
-        profile["FullName"] = profile.get("personal_information", {}).get("full_name") or ""
-        profile["ResumeScore"] = profile.get("resume_score", 0)
-        profile["CareerReadinessScore"] = profile.get("career_readiness", {}).get("overall_score") or 0
-        profile["Skills"] = profile.get("skills", [])
+        # ── Inject compatibility keys for front-end rendering ──
+        personal_info = profile.get("PersonalInformation") or {}
+        contact = profile.get("ContactDetails") or {}
         
-        tech_skills_dict = profile.get("technical_skills", {})
-        all_tech_skills = []
-        if isinstance(tech_skills_dict, dict):
-            for k, v in tech_skills_dict.items():
-                if isinstance(v, list):
-                    all_tech_skills.extend(v)
-        profile["TechnicalSkills"] = all_tech_skills
-        profile["SoftSkills"] = profile.get("soft_skills", [])
+        profile["FullName"] = personal_info.get("FullName") or ""
+        profile["ResumeScore"] = profile.get("ResumeScore") or 0
+        profile["CareerReadinessScore"] = profile.get("CareerReadiness") or 0
+        profile["Skills"] = profile.get("Skills") or []
         
-        profile["Education"] = profile.get("education", [])
-        profile["Experience"] = profile.get("experience", [])
-        profile["Projects"] = profile.get("projects", [])
-        profile["Certifications"] = profile.get("certifications", [])
-        profile["Achievements"] = profile.get("achievements", [])
-        profile["Research"] = profile.get("research", [])
-        profile["Languages"] = profile.get("languages", [])
-        profile["Interests"] = profile.get("interests", [])
+        tech_skills = profile.get("TechnicalSkills") or []
+        profile["TechnicalSkills"] = tech_skills if isinstance(tech_skills, list) else []
+        profile["SoftSkills"] = profile.get("SoftSkills") or []
         
-        c_domain = profile.get("career_domain", "")
+        profile["Education"] = profile.get("Education") or []
+        profile["Experience"] = profile.get("Experience") or []
+        profile["Projects"] = profile.get("Projects") or []
+        profile["Certifications"] = profile.get("Certifications") or []
+        profile["Achievements"] = profile.get("Achievements") or []
+        profile["Research"] = profile.get("Research") or []
+        profile["Languages"] = profile.get("Languages") or []
+        profile["Interests"] = [] # Not explicitly in new schema
+        
+        c_domain = profile.get("CareerDomain") or ""
         profile["CareerDomain"] = ", ".join(c_domain) if isinstance(c_domain, list) else str(c_domain)
-        pref_roles = profile.get("preferred_roles", "")
+        pref_roles = profile.get("PreferredRoles") or ""
         profile["PreferredRole"] = ", ".join(pref_roles) if isinstance(pref_roles, list) else str(pref_roles)
         profile["PreferredRoles"] = pref_roles if isinstance(pref_roles, list) else [str(pref_roles)]
         
-        contact = profile.get("contact_details", {})
-        if isinstance(contact, dict):
-            profile["EmailAddress"] = contact.get("email") or ""
-            profile["PhoneNumber"] = contact.get("phone") or ""
-            profile["Location"] = contact.get("location") or ""
-            profile["LinkedInURL"] = contact.get("linkedin") or ""
-            profile["GitHubURL"] = contact.get("github") or ""
-            profile["PortfolioURL"] = contact.get("portfolio") or ""
+        profile["EmailAddress"] = contact.get("Email") or ""
+        profile["PhoneNumber"] = contact.get("Phone") or ""
+        profile["Location"] = contact.get("Address") or personal_info.get("CurrentLocation") or ""
+        profile["LinkedInURL"] = contact.get("LinkedIn") or ""
+        profile["GitHubURL"] = contact.get("GitHub") or ""
+        profile["PortfolioURL"] = contact.get("Portfolio") or ""
             
-        profile["YearsOfExperience"] = profile.get("years_of_experience") or "0 (Student/Fresher)"
-        profile["ResumeStrengths"] = profile.get("career_readiness", {}).get("strengths", [])
-        profile["ResumeWeaknesses"] = profile.get("career_readiness", {}).get("areas_to_improve", [])
+        profile["YearsOfExperience"] = "0 (Student/Fresher)" # Derived later usually
+        profile["ResumeStrengths"] = []
+        profile["ResumeWeaknesses"] = []
 
         return profile
 
