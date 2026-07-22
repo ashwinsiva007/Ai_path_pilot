@@ -144,17 +144,9 @@ class ProfileScanner:
         if not value.startswith("http://") and not value.startswith("https://"):
             return False
             
-        try:
-            req = urllib.request.Request(value, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-            with urllib.request.urlopen(req, timeout=4) as response:
-                return True
-        except urllib.error.HTTPError as e:
-            # 404 means not found. Other errors like 403, 401, 999 (LinkedIn) mean the URL exists but bots are blocked.
-            if e.code == 404:
-                return False
-            return True
-        except Exception:
-            return False
+        # Trust frontend validation to avoid Vercel 10-second serverless timeout
+        # Avoid making slow synchronous HTTP requests for every link
+        return True
 
         
     def _scan_github(self, url_or_username: str) -> dict:
