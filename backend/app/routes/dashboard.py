@@ -133,9 +133,8 @@ def scan_profiles():
     
     if resume_record and resume_record.parsed_json:
         parsed_json = resume_record.parsed_json
-        bio = parsed_json.get("CareerObjective", "")
-        # Try to pull from TechnicalSkills, fallback to empty list
-        skills = parsed_json.get("TechnicalSkills", [])
+        bio = parsed_json.get("CareerObjective") or ""
+        skills = parsed_json.get("TechnicalSkills") or []
         if not isinstance(skills, list):
             skills = []
             

@@ -23,8 +23,8 @@ class ProfileScanner:
         return results
 
     def generate_recommendations(self, bio: str, skills: list) -> dict:
-        bio = bio.lower()
-        skills = [s.lower() for s in skills]
+        bio = (bio or "").lower()
+        skills = [s.lower() for s in (skills or [])]
 
         detected_skills = set(skills)
 
