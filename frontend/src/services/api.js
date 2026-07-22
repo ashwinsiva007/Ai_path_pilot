@@ -27,7 +27,7 @@ export const getSkillGapAnalysis = () => api.get('/skill_gap/analyze');
 export const getLearningRoadmap = (data) => api.post('/roadmap/generate', data);
 
 // Chat API
-export const sendChatMessage = (message) => api.post('/chat/send', { message });
+export const sendChatMessage = (message) => api.post('/chat/message', { message });
 
 // Compare API
 export const compareResumeToJob = (formData) => api.post('/compare/match', formData, {
