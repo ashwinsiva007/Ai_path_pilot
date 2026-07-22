@@ -42,20 +42,6 @@ export default function Dashboard() {
 
   const [dashboardData, setDashboardData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [userName, setUserName] = useState('Admin');
-
-  useEffect(() => {
-    try {
-      const cached = localStorage.getItem('ai_pilot_resume_profile');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        const name = parsed.FullName || parsed.personal_information?.full_name;
-        if (name && name.trim() && name !== 'Candidate Profile') {
-          setUserName(name.trim());
-        }
-      }
-    } catch (_) {}
-  }, []);
 
   useEffect(() => {
     setIsLoading(true);
@@ -155,7 +141,7 @@ export default function Dashboard() {
       className="p-8 pb-24 text-white"
     >
       <div className="mb-10">
-        <h1 className="text-3xl font-bold">Welcome <span className="text-primary">{userName}</span> 👋</h1>
+        <h1 className="text-3xl font-bold">Welcome <span className="text-primary">Admin</span> 👋</h1>
         <p className="text-gray-400 mt-2 text-sm">Your career health at a glance</p>
       </div>
       
