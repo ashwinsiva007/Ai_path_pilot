@@ -311,9 +311,10 @@ export default function Compare() {
   const [results, setResults] = useState(null);
   const [detailedResume, setDetailedResume] = useState(null);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState(''); // status message during on-demand upload
   const [showModal, setShowModal] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [jsonView, setJsonView] = useState(false); // toggle between structured / raw JSON
+  const [jsonView, setJsonView] = useState(false);
   const navigate = useNavigate();
 
   const STORAGE_KEY = 'ai_pilot_resume_profile';
@@ -321,8 +322,9 @@ export default function Compare() {
   // ── Open the Detailed Resume inspector ──
   const handleViewDetails = async () => {
     setIsFetchingDetails(true);
+    setUploadStatus('');
     try {
-      // 1. Try localStorage first (fastest, works after any upload in the same browser session)
+      // 1. Try localStorage first — instant if resume was uploaded in this session
       const cached = localStorage.getItem(STORAGE_KEY);
       if (cached) {
         setDetailedResume(JSON.parse(cached));
@@ -330,7 +332,7 @@ export default function Compare() {
         return;
       }
 
-      // 2. Try backend DB (may have data if same Vercel instance)
+      // 2. Try backend DB (works if same Vercel invocation still alive)
       try {
         const res = await getResumeDetails();
         const profile = res.data.data;
@@ -338,11 +340,33 @@ export default function Compare() {
         setDetailedResume(profile);
         setShowModal(true);
         return;
-      } catch (apiErr) {
-        // DB empty or table missing → tell user to upload
+      } catch (_) {
+        // DB empty / stateless — fall through
       }
 
-      alert("No extracted resume data found. Please upload your resume first using the file picker, then click 'Detailed Resume'.");
+      // 3. If a file is selected, upload it on-the-spot and show result
+      if (resumeFile) {
+        setUploadStatus('Extracting resume data with AI...');
+        const fd = new FormData();
+        fd.append('file', resumeFile);
+        const res = await uploadResume(fd);
+        const profile = res.data?.data;
+        if (profile) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+          setDetailedResume(profile);
+          setShowModal(true);
+          setUploadStatus('');
+          return;
+        }
+        throw new Error('Empty response from server');
+      }
+
+      // 4. Nothing available — guide user
+      alert('Please select your resume PDF/DOCX using the file picker first, then click \'Detailed Resume\'.');
+    } catch (err) {
+      console.error('Detailed Resume error:', err);
+      setUploadStatus('');
+      alert(`Failed to extract resume data: ${err.response?.data?.message || err.message}. Please try again.`);
     } finally {
       setIsFetchingDetails(false);
     }
@@ -366,10 +390,6 @@ export default function Compare() {
     }
   };
 
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) setResumeFile(e.target.files[0]);
-  };
-
   const handleCompare = async () => {
     if (!resumeFile || !jobLink) return;
     setIsComparing(true);
@@ -383,7 +403,6 @@ export default function Compare() {
       const res = await compareResumeToJob(formData);
       const data = res.data.data;
       setResults(data);
-      // Cache the parsed resume profile returned by /compare/match if present
       if (data?.resume_profile) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data.resume_profile));
       }
@@ -395,26 +414,13 @@ export default function Compare() {
     }
   };
 
-  // ── Upload file & immediately cache parsed profile ──
-  const handleUploadAndCache = async (file) => {
-    if (!file) return;
-    const fd = new FormData();
-    fd.append('file', file);
-    try {
-      const res = await uploadResume(fd);
-      if (res.data?.data) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(res.data.data));
-      }
-    } catch (err) {
-      console.warn('Background upload failed; profile will be extracted on Compare:', err);
-    }
-  };
-
+  // Simple file picker — upload happens on-demand when Detailed Resume is clicked
   const onFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setResumeFile(file);
-      handleUploadAndCache(file); // silently cache profile
+      // Clear any old cached profile when a new file is selected
+      localStorage.removeItem(STORAGE_KEY);
     }
   };
 
@@ -443,8 +449,8 @@ export default function Compare() {
             <input type="file" className="hidden" accept=".pdf,.doc,.docx" onChange={onFileChange} />
           </label>
           {resumeFile && (
-            <p className="mt-3 text-xs text-green-400 flex items-center gap-1">
-              <CheckCircle size={12} /> Profile cached — Detailed Resume ready
+            <p className="mt-3 text-xs text-blue-400 flex items-center gap-1">
+              <CheckCircle size={12} /> File selected — click "Detailed Resume" to extract profile
             </p>
           )}
         </div>
@@ -484,14 +490,23 @@ export default function Compare() {
           <button
             onClick={handleViewDetails}
             disabled={isFetchingDetails}
-            className="flex items-center space-x-2 px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white font-semibold text-lg rounded-full border border-gray-600 hover:scale-105 transition-transform shadow-md"
+            className="flex items-center space-x-2 px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white font-semibold text-lg rounded-full border border-gray-600 hover:scale-105 transition-transform shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
             title="View AI-extracted resume profile (dev tool)"
           >
             {isFetchingDetails ? <Loader2 size={20} className="animate-spin" /> : <Eye size={20} />}
-            <span>Detailed Resume</span>
+            <span>{isFetchingDetails ? (uploadStatus || 'Loading...') : 'Detailed Resume'}</span>
           </button>
         )}
       </div>
+
+      {/* Upload status message */}
+      {uploadStatus && (
+        <div className="flex justify-center mt-4">
+          <p className="flex items-center gap-2 text-sm text-blue-400 animate-pulse">
+            <Loader2 size={14} className="animate-spin" /> {uploadStatus}
+          </p>
+        </div>
+      )}
 
       {/* ── Match Results ── */}
       {results && (
