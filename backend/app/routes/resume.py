@@ -252,13 +252,8 @@ def upload_resume():
 
         # ── Text → Gemini structured parse (if vision didn't handle it) ──
         if structured_data is None:
-            if raw_text:
-                structured_data = gemini_text_to_profile(raw_text, filename)
-            else:
-                # Absolute last resort: gemini_service mock (offline/no key)
-                from app.services.gemini_service import gemini_service as gs
-                mock_json_str = gs._get_mock_response("extract the following information from the resume")
-                structured_data = json.loads(mock_json_str)
+            from app.services.resume_parser import resume_parser
+            structured_data = resume_parser.extract_candidate_profile(raw_text)
 
         # ── Attach metadata ───────────────────────────────────────────────
         structured_data["_filename"] = filename
