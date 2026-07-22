@@ -158,7 +158,7 @@ class ProfileScanner:
                 f"https://api.github.com/users/{username}", 
                 headers={'User-Agent': 'Mozilla/5.0'}
             )
-            with urllib.request.urlopen(req, timeout=3) as response:
+            with urllib.request.urlopen(req, timeout=1.5) as response:
                 data = json.loads(response.read().decode())
                 name = data.get("name") or data.get("login") or "Unknown"
                 public_repos = data.get("public_repos", 0)
@@ -198,7 +198,7 @@ class ProfileScanner:
                     'Referer': 'https://leetcode.com/'
                 }
             )
-            with urllib.request.urlopen(req, timeout=3) as response:
+            with urllib.request.urlopen(req, timeout=1.5) as response:
                 data = json.loads(response.read().decode())
                 user_data = data.get("data", {}).get("matchedUser", {})
                 if not user_data:
