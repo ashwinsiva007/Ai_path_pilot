@@ -1,24 +1,22 @@
 import os
-import urllib.request
 import tempfile
-from flask import Blueprint, request, current_app
+from flask import Blueprint, request, jsonify
 from werkzeug.utils import secure_filename
+from app.extensions import db
+from app.models.user import User
+from app.models.resume import Resume
+from app.models.match_report import MatchReport
+from app.routes.resume import allowed_file
+from app.services.resume_parser import resume_parser
+from app.services.job_scraper import job_scraper
+from app.services.job_parser import job_parser
+from app.services.matching_service import matching_service
+from app.services.skill_gap_service import skill_gap_service
+from app.services.recommendation_service import recommendation_service
+from app.services.roadmap_service import roadmap_service
 from app.utilities.response import success_response, error_response
-from app.services.gemini_service import gemini_service
-from app.routes.resume import extract_text_from_pdf, extract_text_from_docx, allowed_file
 
 bp = Blueprint('compare', __name__)
-
-def fetch_job_text(url: str) -> str:
-    """Attempt to fetch plain text from a URL."""
-    try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=5) as response:
-            html = response.read().decode('utf-8')
-            return html
-    except Exception as e:
-        print(f"Failed to fetch job URL {url}: {e}")
-        return f"Job Link: {url}"
 
 @bp.route('/match', methods=['POST'])
 def match_resume_job():
@@ -40,22 +38,107 @@ def match_resume_job():
         filepath = os.path.join(upload_folder, filename)
         file.save(filepath)
         
-        ext = filename.rsplit('.', 1)[1].lower()
-        resume_text = ""
         try:
-            if ext == 'pdf':
-                resume_text = extract_text_from_pdf(filepath)
-            elif ext == 'docx':
-                resume_text = extract_text_from_docx(filepath)
-        except Exception as e:
-            return error_response(f"Failed to parse resume: {str(e)}", 500)
+            # 1. Parse and extract resume profile
+            resume_data = resume_parser.parse_resume(filepath, filename)
             
-        job_text = fetch_job_text(job_link)
-        
-        try:
-            result = gemini_service.compare_resume_to_job(resume_text, job_text)
-            return success_response("Comparison successful", result)
+            # Associate with dummy user_id = 1
+            user_id = 1
+            user = User.query.get(user_id)
+            if not user:
+                user = User(id=user_id, username='testuser', email='test@example.com', password_hash='mock')
+                db.session.add(user)
+                db.session.commit()
+            
+            # Replace previous resume record
+            resume_record = Resume.query.filter_by(user_id=user_id).first()
+            if resume_record:
+                resume_record.filename = filename
+                resume_record.parsed_json = resume_data
+                resume_record.score = float(resume_data.get("ResumeScore", 0))
+                resume_record.readiness = str(resume_data.get("CareerReadinessScore", 0))
+            else:
+                resume_record = Resume(
+                    user_id=user_id, 
+                    filename=filename, 
+                    parsed_json=resume_data,
+                    score=float(resume_data.get("ResumeScore", 0)),
+                    readiness=str(resume_data.get("CareerReadinessScore", 0))
+                )
+                db.session.add(resume_record)
+            
+            # 2. Scrape job description
+            raw_job_text = job_scraper.scrape_url(job_link)
+            
+            # 3. Parse job description
+            structured_job = job_parser.parse_job_description(raw_job_text)
+            
+            # 4. Evaluate match
+            matching_results = matching_service.evaluate_match(resume_data, structured_job)
+            
+            # 5. Skill gap detection
+            skill_gaps = skill_gap_service.detect_gaps(
+                resume_skills=resume_data.get("Skills", []),
+                job_skills=structured_job.get("RequiredSkills", []),
+                preferred_skills=structured_job.get("PreferredSkills", [])
+            )
+            
+            # 6. Generate recommendation
+            recommendations = recommendation_service.generate_recommendation(
+                resume_data=resume_data,
+                job_requirements=structured_job,
+                matching_results=matching_results,
+                skill_gaps=skill_gaps
+            )
+            
+            # 7. Generate learning roadmap
+            roadmap_data = roadmap_service.generate_roadmap_plan(
+                missing_skills=skill_gaps.get("missing_skills", []),
+                role=structured_job.get("JobRole", "Software Engineer")
+            )
+            
+            # Formulate final response
+            final_report = {
+                "resume_score": resume_data.get("ResumeScore", 80),
+                "career_readiness": resume_data.get("CareerReadinessScore", 80),
+                "match_score": matching_results.get("overall_match", 75),
+                "matched_skills": skill_gaps.get("matched_skills", []),
+                "missing_skills": skill_gaps.get("missing_skills", []),
+                "resume_improvements": recommendations.get("resume_improvements", []),
+                "recommended_courses": roadmap_data.get("recommended_courses", []),
+                "learning_roadmap": roadmap_data.get("plan_7_day", []) + roadmap_data.get("plan_30_day", []),
+                "should_apply": recommendations.get("should_apply", "MAYBE"),
+                "reason": recommendations.get("reason", "Matches well with key requirements.")
+            }
+            
+            # Save report to db
+            report_record = MatchReport(
+                user_id=user_id,
+                company_name=structured_job.get("CompanyName", "Target Company"),
+                job_role=structured_job.get("JobRole", "Target Role"),
+                job_url=job_link,
+                job_description=raw_job_text,
+                resume_score=final_report["resume_score"],
+                career_readiness=final_report["career_readiness"],
+                match_score=final_report["match_score"],
+                matched_skills=final_report["matched_skills"],
+                missing_skills=final_report["missing_skills"],
+                resume_improvements=final_report["resume_improvements"],
+                recommended_courses=final_report["recommended_courses"],
+                learning_roadmap=final_report["learning_roadmap"],
+                should_apply=final_report["should_apply"],
+                reason=final_report["reason"]
+            )
+            
+            MatchReport.query.filter_by(user_id=user_id).delete()
+            db.session.add(report_record)
+            db.session.commit()
+            
+            # Return matching success structure wrapper
+            return success_response("Comparison successful", final_report)
+            
         except Exception as e:
-            return error_response(f"Failed to analyze fit: {str(e)}", 500)
-
-    return error_response("Invalid file type", 400)
+            db.session.rollback()
+            return error_response(f"Failed to parse and match resume: {str(e)}", 500)
+            
+    return error_response("Invalid file type. Please upload a PDF or DOCX file.", 400)

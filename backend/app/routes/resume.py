@@ -47,15 +47,9 @@ def upload_resume():
         filepath = os.path.join(upload_folder, filename)
         file.save(filepath)
         
-        ext = filename.rsplit('.', 1)[1].lower()
-        extracted_text = ""
         try:
-            if ext == 'pdf':
-                extracted_text = extract_text_from_pdf(filepath)
-            elif ext == 'docx':
-                extracted_text = extract_text_from_docx(filepath)
-                
-            structured_data = gemini_service.extract_resume_data(extracted_text)
+            from app.services.resume_parser import resume_parser
+            structured_data = resume_parser.parse_resume(filepath, filename)
             
             # Associate with a dummy user for now (user_id = 1)
             user_id = 1
@@ -70,8 +64,16 @@ def upload_resume():
             if resume_record:
                 resume_record.filename = filename
                 resume_record.parsed_json = structured_data
+                resume_record.score = float(structured_data.get("ResumeScore", 0))
+                resume_record.readiness = str(structured_data.get("CareerReadinessScore", 0))
             else:
-                resume_record = Resume(user_id=user_id, filename=filename, parsed_json=structured_data)
+                resume_record = Resume(
+                    user_id=user_id, 
+                    filename=filename, 
+                    parsed_json=structured_data,
+                    score=float(structured_data.get("ResumeScore", 0)),
+                    readiness=str(structured_data.get("CareerReadinessScore", 0))
+                )
                 db.session.add(resume_record)
                 
             db.session.commit()
@@ -80,8 +82,8 @@ def upload_resume():
             db.session.rollback()
             return error_response(f"Failed to parse file: {str(e)}", 500)
             
-        # Return success without exposing the internal AI profile
-        return success_response("Resume analyzed successfully.")
+        # Return success with the structured data for testing/UI details view
+        return success_response("Resume analyzed successfully.", structured_data)
         
     return error_response("File type not allowed. Please upload PDF or DOCX.", 400)
 
@@ -92,14 +94,15 @@ def analyze_resume():
 @bp.route('/details', methods=['GET'])
 def get_resume_details():
     try:
-        # Assume user_id = 1 for now
         user_id = 1
         resume_record = Resume.query.filter_by(user_id=user_id).first()
         
-        if not resume_record or not resume_record.parsed_json:
-            return error_response("No resume found for this user.", 404)
+        if resume_record and resume_record.parsed_json:
+            return success_response("Resume details retrieved.", resume_record.parsed_json)
             
-        return success_response("Resume details retrieved.", resume_record.parsed_json)
+        # Return fallback mock resume if no resume exists in database
+        from app.routes.job import MOCK_RESUME_DATA
+        return success_response("Resume details retrieved (mock).", MOCK_RESUME_DATA)
         
     except Exception as e:
         return error_response(f"Failed to retrieve resume details: {str(e)}", 500)
