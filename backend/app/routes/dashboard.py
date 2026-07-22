@@ -120,25 +120,49 @@ def update_links():
 
 @bp.route('/scan', methods=['POST'])
 def scan_profiles():
-    profile_scores = profile_scanner.scan_profiles(user_links)
-    
-    # Fetch Resume from DB (user_id = 1 for demo)
-    user_id = 1
-    resume_record = Resume.query.filter_by(user_id=user_id).first()
-    
-    bio = ""
-    skills = []
-    
-    if resume_record and resume_record.parsed_json:
-        parsed_json = resume_record.parsed_json
-        bio = parsed_json.get("CareerObjective") or ""
-        skills = parsed_json.get("TechnicalSkills") or []
-        if not isinstance(skills, list):
-            skills = []
-            
-    recommendations = profile_scanner.generate_recommendations(bio, skills)
-    
-    return jsonify({
-        "scores": profile_scores,
-        "recommendations": recommendations
-    }), 200
+    try:
+        profile_scores = profile_scanner.scan_profiles(user_links)
+        
+        # Fetch Resume from DB (user_id = 1 for demo)
+        resume_record = None
+        try:
+            user_id = 1
+            resume_record = Resume.query.filter_by(user_id=user_id).first()
+        except Exception as e:
+            print(f"Skipping DB fetch due to ephemeral serverless reset: {e}")
+            from app.extensions import db
+            # Optional: recreate tables for future use in this container
+            try:
+                db.create_all()
+            except:
+                pass
+        
+        bio = ""
+        skills = []
+        
+        if resume_record and resume_record.parsed_json:
+            parsed_json = resume_record.parsed_json
+            # In some database dialects, JSON may be returned as a string if not properly typed
+            if isinstance(parsed_json, str):
+                import json
+                try:
+                    parsed_json = json.loads(parsed_json)
+                except:
+                    parsed_json = {}
+            bio = parsed_json.get("CareerObjective") or ""
+            skills = parsed_json.get("TechnicalSkills") or []
+            if not isinstance(skills, list):
+                skills = []
+                
+        recommendations = profile_scanner.generate_recommendations(bio, skills)
+        
+        return jsonify({
+            "scores": profile_scores,
+            "recommendations": recommendations
+        }), 200
+    except Exception as general_err:
+        print(f"Critical error in /scan: {general_err}")
+        return jsonify({
+            "scores": {"error": {"score": 0, "username": "Error"}},
+            "recommendations": profile_scanner.generate_recommendations("", [])
+        }), 200

@@ -8,11 +8,7 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
 
     db.init_app(app)
-    
-    with app.app_context():
-        db.create_all()
-
-    # Register blueprints
+    # Register blueprints first so models are imported!
     from app.routes.auth import bp as auth_bp
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
@@ -46,6 +42,10 @@ def create_app(config_class=Config):
     @app.route('/health')
     def health():
         return {"status": "ok"}
+
+    # Run create_all() after models are imported via blueprints
+    with app.app_context():
+        db.create_all()
 
     # Global Exception Handler for standardized JSON responses
     @app.errorhandler(Exception)
