@@ -16,7 +16,29 @@ export default function Dashboard() {
   const [scanResults, setScanResults] = useState(null);
   const [editingSlot, setEditingSlot] = useState(null);
   const [editValue, setEditValue] = useState('');
+  const [editError, setEditError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+
+  const validateLink = (id, url) => {
+    if (!url || url.trim() === '') return '';
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'https:') return 'Must be a valid https:// URL';
+      
+      if (id === 'linkedin' && !parsed.hostname.includes('linkedin.com')) {
+        return 'Must be a valid linkedin.com URL';
+      }
+      if (id === 'github' && !parsed.hostname.includes('github.com')) {
+        return 'Must be a valid github.com URL';
+      }
+      if (id === 'leetcode' && !parsed.hostname.includes('leetcode.com')) {
+        return 'Must be a valid leetcode.com URL';
+      }
+      return '';
+    } catch (e) {
+      return 'Please enter a valid URL (e.g., https://...)';
+    }
+  };
 
   useEffect(() => {
     getLinks().then(res => {
@@ -27,9 +49,15 @@ export default function Dashboard() {
   }, []);
 
   const handleSave = async (key, val) => {
+    const error = validateLink(key, val);
+    if (error) {
+      setEditError(error);
+      return;
+    }
     const newLinks = { ...links, [key]: val };
     setLinks(newLinks);
     setEditingSlot(null);
+    setEditError('');
     try {
       await updateLinks({ [key]: val });
     } catch (err) {
@@ -137,14 +165,28 @@ export default function Dashboard() {
                   <input 
                     type="text" 
                     value={editValue} 
-                    onChange={(e) => setEditValue(e.target.value)}
-                    placeholder="Enter URL"
-                    className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white mb-2"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditValue(val);
+                      setEditError(validateLink(slot.id, val));
+                    }}
+                    placeholder="Enter URL (https://...)"
+                    className={`w-full bg-gray-900 border ${editError ? 'border-red-500 focus:ring-red-500' : 'border-gray-700'} rounded p-2 text-sm text-white mb-1 outline-none`}
                     autoFocus
                   />
-                  <div className="flex space-x-2 w-full">
-                    <button onClick={() => handleSave(slot.id, editValue)} className="flex-1 bg-primary text-white text-xs py-1 rounded hover:bg-blue-600">Save</button>
-                    <button onClick={() => setEditingSlot(null)} className="flex-1 bg-gray-700 text-white text-xs py-1 rounded hover:bg-gray-600">Cancel</button>
+                  {editError && <span className="text-red-400 text-[10px] mb-2 w-full text-left">{editError}</span>}
+                  <div className="flex space-x-2 w-full mt-1">
+                    <button 
+                      onClick={() => handleSave(slot.id, editValue)} 
+                      disabled={!!editError}
+                      className="flex-1 bg-primary text-white text-xs py-1 rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Save
+                    </button>
+                    <button onClick={() => {
+                      setEditingSlot(null);
+                      setEditError('');
+                    }} className="flex-1 bg-gray-700 text-white text-xs py-1 rounded hover:bg-gray-600">Cancel</button>
                   </div>
                 </div>
               ) : (
@@ -159,6 +201,7 @@ export default function Dashboard() {
                         e.preventDefault();
                         setEditingSlot(slot.id);
                         setEditValue('');
+                        setEditError('');
                       }
                     }}
                   >
@@ -170,7 +213,8 @@ export default function Dashboard() {
                     <button 
                       onClick={() => {
                         setEditingSlot(slot.id);
-                        setEditValue(links[slot.id]);
+                        setEditValue(links[slot.id] || '');
+                        setEditError('');
                       }}
                       className="absolute top-2 right-2 text-gray-500 hover:text-white text-xs"
                     >
