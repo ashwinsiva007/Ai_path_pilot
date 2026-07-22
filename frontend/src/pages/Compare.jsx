@@ -93,8 +93,8 @@ function StructuredResumeViewer({ data }) {
       {/* Scores */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         {[
-          { label: 'Resume Score', value: data.ResumeScore, suffix: '/100' },
-          { label: 'Career Readiness', value: data.CareerReadinessScore, suffix: '/100' },
+          { label: 'Resume Score', value: data.ResumeScore ?? 0, suffix: '/100' },
+          { label: 'Career Readiness', value: data.CareerReadinessScore ?? 0, suffix: '/100' },
         ].map(({ label, value, suffix }) => (
           <div key={label} className="bg-gray-900/80 rounded-2xl border border-gray-800 p-5 text-center">
             <div className={`text-5xl font-extrabold ${scoreColor(value)}`}>{value}<span className="text-lg text-gray-500 font-normal">{suffix}</span></div>
@@ -324,22 +324,31 @@ export default function Compare() {
     setIsFetchingDetails(true);
     setUploadStatus('');
     try {
-      // 1. Try localStorage first — instant if resume was uploaded in this session
+      // 1. Try localStorage first — check if it contains valid parsed data
       const cached = localStorage.getItem(STORAGE_KEY);
       if (cached) {
-        setDetailedResume(JSON.parse(cached));
-        setShowModal(true);
-        return;
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed && (parsed.FullName || parsed.personal_information?.full_name)) {
+            setDetailedResume(parsed);
+            setShowModal(true);
+            return;
+          }
+        } catch (e) {
+          localStorage.removeItem(STORAGE_KEY);
+        }
       }
 
       // 2. Try backend DB (works if same Vercel invocation still alive)
       try {
         const res = await getResumeDetails();
         const profile = res.data.data;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
-        setDetailedResume(profile);
-        setShowModal(true);
-        return;
+        if (profile && (profile.FullName || profile.personal_information?.full_name)) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+          setDetailedResume(profile);
+          setShowModal(true);
+          return;
+        }
       } catch (_) {
         // DB empty / stateless — fall through
       }
