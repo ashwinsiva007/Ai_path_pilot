@@ -1,5 +1,6 @@
 import os
 import urllib.request
+import tempfile
 from flask import Blueprint, request, current_app
 from werkzeug.utils import secure_filename
 from app.utilities.response import success_response, error_response
@@ -35,8 +36,7 @@ def match_resume_job():
         
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        upload_folder = os.path.join(current_app.root_path, '..', 'uploads')
-        os.makedirs(upload_folder, exist_ok=True)
+        upload_folder = tempfile.gettempdir()
         filepath = os.path.join(upload_folder, filename)
         file.save(filepath)
         
