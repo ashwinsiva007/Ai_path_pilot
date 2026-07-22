@@ -215,12 +215,3 @@ The project is pre-configured for single-click deployment on **Vercel** using `v
 
 ---
 
-## 📜 License
-
-This project is licensed under the **MIT License**.
-
----
-
-<p align="center">
-  Crafted with ❤️ by the <b>AI Path Pilot Team</b>
-</p>
