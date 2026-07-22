@@ -251,7 +251,7 @@ export default function Dashboard() {
           <div>
             <h2 className="text-xl md:text-2xl font-bold text-white mb-2">Join the Official WhatsApp Community</h2>
             <p className="text-white/90 text-sm md:text-base max-w-2xl leading-relaxed">
-              Stay updated with real-time announcements, coordinate with your team members, and get direct assistance from mentors and organizers.
+              Connect with ambitious professionals. Share career milestones, discuss AI-powered roadmaps, and get tips to land your dream role.
             </p>
           </div>
         </div>
