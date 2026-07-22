@@ -25,7 +25,7 @@ class GeminiService:
         
         req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
         try:
-            with urllib.request.urlopen(req, timeout=12) as response:
+            with urllib.request.urlopen(req, timeout=8) as response:
                 result = json.loads(response.read().decode())
                 # Extract text from the Gemini API response
                 text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
@@ -163,6 +163,19 @@ class GeminiService:
                     "Practice container lifecycle commands.",
                     "Mock explain project architectural details."
                 ]
+            })
+
+        # 7. Dashboard Recommendations
+        if "expert ai career advisor" in prompt_lower or "career_score" in prompt_lower:
+            return json.dumps({
+                "career_score": 75,
+                "detected_skills": ["Python", "JavaScript", "React"],
+                "missing_skills": ["Docker", "AWS"],
+                "jobs": ["Frontend Developer", "React Engineer"],
+                "internships": ["SWE Intern", "Web Dev Intern"],
+                "workshops": ["System Design Basics", "Advanced React"],
+                "hackathons": ["Smart India Hackathon", "Global Hack Week"],
+                "leetcode_problems": ["Two Sum", "Merge Intervals"]
             })
 
         # Generic default fallback
