@@ -3,8 +3,6 @@ from app.extensions import db
 from app.models.match_report import MatchReport
 from app.models.resume import Resume
 from app.services.profile_scanner import profile_scanner
-from app.models.resume import Resume
-from app.extensions import db
 
 bp = Blueprint('dashboard', __name__)
 
