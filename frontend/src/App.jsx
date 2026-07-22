@@ -96,7 +96,7 @@ function AppRoutes() {
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
 
   return (
-    <div className="flex min-h-screen bg-background text-textPrimary font-sans">
+    <div className="flex h-screen bg-background text-textPrimary font-sans">
       {!isAuthPage && <Sidebar />}
       <main className="flex-1 overflow-y-auto">
         <Routes>
