@@ -248,9 +248,9 @@ class ProfileScanner:
 
         if platform == "linkedin":
             details = {
-                "Connections": "500+",
-                "Posts Uploaded": 24,
-                "Total Impressions": "12.5k"
+                "Platform": "LinkedIn",
+                "Status": "Verified",
+                "Note": "Detailed stats (connections, posts, impressions) are private and require OAuth authentication to fetch."
             }
 
         return {
