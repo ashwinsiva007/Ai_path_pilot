@@ -97,12 +97,10 @@ def get_resume_details():
         user_id = 1
         resume_record = Resume.query.filter_by(user_id=user_id).first()
         
-        if resume_record and resume_record.parsed_json:
-            return success_response("Resume details retrieved.", resume_record.parsed_json)
+        if not resume_record or not resume_record.parsed_json:
+            return error_response("No extracted resume data found. Please upload a resume first.", 404)
             
-        # Return fallback mock resume if no resume exists in database
-        from app.routes.job import MOCK_RESUME_DATA
-        return success_response("Resume details retrieved (mock).", MOCK_RESUME_DATA)
+        return success_response("Resume details retrieved.", resume_record.parsed_json)
         
     except Exception as e:
         return error_response(f"Failed to retrieve resume details: {str(e)}", 500)

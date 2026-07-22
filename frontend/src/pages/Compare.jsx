@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Link as LinkIcon, UploadCloud, Sparkles, CheckCircle, XCircle, Loader2, AlertCircle, ArrowRight, Lightbulb, BookOpen, User, Star, Eye, X } from 'lucide-react';
+import { FileText, Link as LinkIcon, UploadCloud, Sparkles, CheckCircle, XCircle, Loader2, AlertCircle, ArrowRight, Lightbulb, BookOpen, Eye, X, Copy, Check } from 'lucide-react';
 import { compareResumeToJob, getResumeDetails } from '../services/api';
+
+// Set to false to hide/remove developer testing features before production
+const SHOW_DEV_FEATURES = true;
 
 export default function Compare() {
   const [jobLink, setJobLink] = useState('');
@@ -13,20 +16,55 @@ export default function Compare() {
   const [detailedResume, setDetailedResume] = useState(null);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [fetchError, setFetchError] = useState('');
   const navigate = useNavigate();
 
   const handleViewDetails = async () => {
     setIsFetchingDetails(true);
+    setFetchError('');
     try {
       const res = await getResumeDetails();
       setDetailedResume(res.data.data);
       setShowModal(true);
     } catch (err) {
       console.error(err);
-      alert("No parsed resume found in the database. Please upload one first.");
+      const errMsg = err.response?.data?.message || err.response?.data?.error || "No extracted resume data found. Please upload a resume first.";
+      setFetchError(errMsg);
+      alert(errMsg);
     } finally {
       setIsFetchingDetails(false);
     }
+  };
+
+  const handleCopy = () => {
+    if (!detailedResume) return;
+    navigator.clipboard.writeText(JSON.stringify(detailedResume, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const syntaxHighlight = (json) => {
+    if (!json) return '';
+    if (typeof json !== 'string') {
+      json = JSON.stringify(json, undefined, 2);
+    }
+    json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return json.replace(/("(\\u[a-zA-Z0-8]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g, function (match) {
+      let cls = 'text-amber-500'; // number
+      if (/^"/.test(match)) {
+        if (/:$/.test(match)) {
+          cls = 'text-blue-400 font-bold'; // key
+        } else {
+          cls = 'text-green-400'; // string
+        }
+      } else if (/true|false/.test(match)) {
+        cls = 'text-purple-400'; // boolean
+      } else if (/null/.test(match)) {
+        cls = 'text-pink-400'; // null
+      }
+      return '<span class="' + cls + '">' + match + '</span>';
+    });
   };
 
   const validateJobLink = (url) => {
@@ -96,14 +134,6 @@ export default function Compare() {
               <input type="file" className="hidden" accept=".pdf,.doc,.docx" onChange={handleFileChange} />
             </label>
           </div>
-          <button 
-            onClick={handleViewDetails}
-            disabled={isFetchingDetails}
-            className="mt-4 flex items-center space-x-2 text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            {isFetchingDetails ? <Loader2 size={16} className="animate-spin" /> : <Eye size={16} />}
-            <span>Detailed Resume (Testing)</span>
-          </button>
         </div>
 
         {/* Job Link Grid Column */}
@@ -132,7 +162,7 @@ export default function Compare() {
 
       </div>
 
-      <div className="flex justify-center">
+      <div className="flex justify-center items-center space-x-4">
         <button 
           onClick={handleCompare}
           disabled={!resumeFile || !jobLink || !!jobLinkError || isComparing}
@@ -141,6 +171,18 @@ export default function Compare() {
           {isComparing ? <Loader2 size={24} className="animate-spin" /> : <Sparkles size={24} />}
           <span>{isComparing ? 'Analyzing...' : 'Compare Fit'}</span>
         </button>
+
+        {SHOW_DEV_FEATURES && (
+          <button 
+            onClick={handleViewDetails}
+            disabled={isFetchingDetails}
+            className="flex items-center space-x-2 px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white font-semibold text-lg rounded-full border border-gray-700 hover:scale-105 transition-transform shadow-md"
+            title="Inspect raw extracted JSON data stored in backend"
+          >
+            {isFetchingDetails ? <Loader2 size={20} className="animate-spin" /> : <Eye size={20} />}
+            <span>Detailed Resume</span>
+          </button>
+        )}
       </div>
 
       {results && (
@@ -257,31 +299,58 @@ export default function Compare() {
         </motion.div>
       )}
 
-      {/* Detailed Resume Modal */}
-      {showModal && (
+      {/* Detailed Resume Modal (Developer JSON Viewer Panel) */}
+      {showModal && SHOW_DEV_FEATURES && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-[#1e2128] border border-gray-700 rounded-2xl p-6 w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl relative"
+            className="bg-[#1e2128] border border-gray-700 rounded-3xl p-6 w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl relative"
           >
-            <button 
-              onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
-            >
-              <X size={24} />
-            </button>
-            <h2 className="text-2xl font-bold mb-4 text-white flex items-center">
-              <Eye className="mr-3 text-blue-400" /> Extracted Candidate Profile
-            </h2>
-            <p className="text-gray-400 text-sm mb-4">This is the raw internal profile the AI has extracted and saved into the SQLite database.</p>
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-800 pb-4 mb-4">
+              <h2 className="text-2xl font-bold text-white flex items-center">
+                <Eye className="mr-3 text-blue-400" /> Raw AI-Extracted Profile JSON
+              </h2>
+              <div className="flex items-center space-x-3">
+                <button 
+                  onClick={handleCopy}
+                  className="flex items-center space-x-1.5 px-3 py-1.5 bg-gray-850 border border-gray-700 rounded-lg text-xs font-semibold text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+                >
+                  {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                  <span>{copied ? 'Copied' : 'Copy JSON'}</span>
+                </button>
+                <button 
+                  onClick={() => setShowModal(false)}
+                  className="text-gray-400 hover:text-white transition-colors p-1 bg-gray-850 hover:bg-gray-800 rounded-lg border border-gray-700"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            <p className="text-gray-400 text-xs mb-4">
+              This panel displays the exact JSON candidate profile stored in SQLite. Color guide: <span className="text-blue-400 font-bold">keys</span>, <span className="text-green-400">strings</span>, <span className="text-purple-400">booleans</span>, <span className="text-amber-500">numbers</span>.
+            </p>
             
-            <div className="bg-gray-900 rounded-xl p-4 overflow-auto flex-1 border border-gray-800">
-              <pre className="text-green-400 text-sm font-mono whitespace-pre-wrap break-words">
-                {JSON.stringify(detailedResume, null, 2)}
-              </pre>
+            {/* JSON Content Area */}
+            <div className="bg-gray-950 rounded-xl p-5 overflow-auto flex-1 border border-gray-900 scrollbar-thin">
+              <pre 
+                className="text-sm font-mono whitespace-pre-wrap break-words leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: syntaxHighlight(detailedResume) }}
+              />
             </div>
             
+            {/* Footer */}
+            <div className="border-t border-gray-800 pt-4 mt-4 flex justify-between items-center">
+              <span className="text-xs text-gray-500">DEV TOOLS ONLY - Hidden in production</span>
+              <button 
+                onClick={() => setShowModal(false)}
+                className="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-lg text-sm font-semibold text-white transition-colors"
+              >
+                Close Inspector
+              </button>
+            </div>
           </motion.div>
         </div>
       )}
