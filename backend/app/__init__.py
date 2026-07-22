@@ -48,6 +48,26 @@ def create_app(config_class=Config):
     # Run create_all() after models are imported via blueprints
     with app.app_context():
         db.create_all()
+        
+        # Seed admin user if it doesn't exist (especially for Vercel stateless DBs)
+        try:
+            from app.models.user import User
+            from werkzeug.security import generate_password_hash
+            
+            admin = User.query.filter_by(username='admin').first()
+            if not admin:
+                hashed_pw = generate_password_hash('admin123')
+                new_admin = User(
+                    username='admin',
+                    email='admin@pathpilot.com',
+                    password_hash=hashed_pw,
+                    role='admin'
+                )
+                db.session.add(new_admin)
+                db.session.commit()
+                print("Admin seeded successfully.")
+        except Exception as e:
+            print(f"Failed to seed admin: {e}")
 
     # Global Exception Handler for standardized JSON responses
     @app.errorhandler(Exception)
