@@ -1,231 +1,186 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { sendChatMessage } from '../services/api';
-import { Send, User, Sparkles, AlertCircle, Zap, BookOpen, Briefcase, Target } from 'lucide-react';
+import { Briefcase, Target, BookOpen, Zap, ChevronDown, ChevronUp, Sparkles, CheckCircle2, HelpCircle } from 'lucide-react';
 
-const QUICK_PROMPTS = [
-  { icon: <Briefcase size={14} />, text: "How do I find internships?" },
-  { icon: <Target size={14} />, text: "Review my resume strategy" },
-  { icon: <BookOpen size={14} />, text: "Top skills to learn in 2025" },
-  { icon: <Zap size={14} />, text: "How to crack tech interviews?" },
+const STANDARD_QUESTIONS = [
+  {
+    id: 1,
+    title: "How do I find high-paying tech internships?",
+    icon: <Briefcase size={22} className="text-cyan-400" />,
+    gradient: "from-blue-600/20 via-cyan-500/10 to-transparent",
+    badgeColor: "bg-cyan-500/10 text-cyan-400 border-cyan-500/30",
+    category: "Internships & Jobs",
+    summary: "Proven strategies to land top-tier tech internships on LinkedIn, Unstop, and open-source programs.",
+    answer: [
+      "Target verified platforms: Filter LinkedIn Jobs by 'Date Posted (Past 24 hours)' and 'Entry Level / Internship'.",
+      "Leverage competitive coding & hackathons: Participate in Unstop Hackathons, Google Summer of Code, and MLH Hackathons.",
+      "Direct Outreach: Message engineering managers and technical recruiters directly on LinkedIn with a 3-bullet pitch highlighting live project demos.",
+      "Build Proof-of-Work: Host full-stack web applications on Vercel/Render with clear GitHub README documentation."
+    ]
+  },
+  {
+    id: 2,
+    title: "What are the top AI & Full Stack skills to learn in 2025?",
+    icon: <Zap size={22} className="text-violet-400" />,
+    gradient: "from-violet-600/20 via-purple-500/10 to-transparent",
+    badgeColor: "bg-violet-500/10 text-violet-400 border-violet-500/30",
+    category: "Skill Roadmap",
+    summary: "The essential modern tech stack demanded by high-growth startups and top tech firms.",
+    answer: [
+      "AI & LLM Integration: Master Python, Google Gemini API, OpenAI API, LangChain, and RAG architectures.",
+      "Frontend Mastery: React 18+, Next.js (App Router), TypeScript, and Tailwind CSS for rapid UI development.",
+      "Backend & APIs: Python (Flask / FastAPI / Django) and Node.js for high-performance RESTful APIs.",
+      "Databases & Cloud: PostgreSQL, SQLite, Redis caching, Docker containerization, and Vercel serverless deployments."
+    ]
+  },
+  {
+    id: 3,
+    title: "How can I optimize my resume to pass ATS screeners?",
+    icon: <Target size={22} className="text-emerald-400" />,
+    gradient: "from-emerald-600/20 via-teal-500/10 to-transparent",
+    badgeColor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+    category: "Resume Strategy",
+    summary: "Actionable ATS optimization guidelines to get your resume noticed by hiring managers.",
+    answer: [
+      "Use Single-Column Formatting: Avoid multi-column templates, tables, or image graphics that break ATS parsers.",
+      "Match Keyword Density: Directly mirror technical skills (e.g. 'Python', 'React', 'REST APIs') from the target job description.",
+      "Quantify Achievements: Use the Google XYZ formula: 'Accomplished [X] as measured by [Y], by doing [Z]' (e.g., 'Reduced query latency by 40% using Redis').",
+      "Include Live Links: Add clickable GitHub repository links and live project deployment URLs."
+    ]
+  },
+  {
+    id: 4,
+    title: "How do I prepare for technical coding & design interviews?",
+    icon: <BookOpen size={22} className="text-amber-400" />,
+    gradient: "from-amber-600/20 via-orange-500/10 to-transparent",
+    badgeColor: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+    category: "Interview Preparation",
+    summary: "A systematic 4-week preparation plan for coding tests and system design discussions.",
+    answer: [
+      "Master Core DSA Patterns: Focus on the 'Blind 75' LeetCode list covering Arrays, HashMaps, Two Pointers, Trees, and Dynamic Programming.",
+      "Mock Interview Practice: Practice thinking out loud while solving problems under timed constraints.",
+      "System Design Fundamentals: Understand REST API design, database normalization, indexing, caching strategies, and load balancing.",
+      "Project Deep-Dive Prep: Be ready to explain your architecture decisions, challenges faced, and trade-offs made in your top 2 projects."
+    ]
+  }
 ];
 
-function MessageBubble({ msg }) {
-  const isUser = msg.sender === 'user';
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
-      className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}
-    >
-      <div className={`flex items-end gap-2.5 max-w-[80%] ${isUser ? 'flex-row-reverse' : ''}`}>
-        {/* Avatar */}
-        <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center
-          ${isUser
-            ? 'bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30'
-            : 'bg-gradient-to-br from-cyan-500 to-teal-600 shadow-lg shadow-cyan-500/30'}`}
-        >
-          {isUser
-            ? <User size={15} className="text-white" />
-            : <Sparkles size={15} className="text-white" />
-          }
-        </div>
-
-        {/* Bubble */}
-        <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap
-          ${isUser
-            ? 'bg-gradient-to-br from-violet-600 to-purple-700 text-white rounded-br-md shadow-lg shadow-violet-500/20'
-            : msg.isError
-              ? 'bg-red-900/40 border border-red-500/30 text-red-200 rounded-bl-md'
-              : 'bg-white/5 border border-white/10 text-gray-100 rounded-bl-md backdrop-blur-sm'
-          }`}
-        >
-          {msg.isError && <AlertCircle size={14} className="inline mr-1 mb-0.5 text-red-400" />}
-          {msg.text}
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-function TypingIndicator() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 10 }}
-      className="flex justify-start mb-4"
-    >
-      <div className="flex items-end gap-2.5">
-        <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-cyan-500 to-teal-600 shadow-lg shadow-cyan-500/30">
-          <Sparkles size={15} className="text-white" />
-        </div>
-        <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-white/5 border border-white/10 flex gap-1.5 items-center">
-          {[0, 0.2, 0.4].map((delay, i) => (
-            <motion.div
-              key={i}
-              animate={{ y: [0, -5, 0] }}
-              transition={{ repeat: Infinity, duration: 0.8, delay, ease: 'easeInOut' }}
-              className="w-2 h-2 bg-cyan-400 rounded-full"
-            />
-          ))}
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
 export default function AgentChat() {
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      text: "👋 Hi! I'm your AI Career Agent powered by Gemini.\n\nI can help you with job searching, resume tips, interview prep, skill planning, and career strategy.\n\nWhat would you like to work on today?",
-      sender: 'bot'
-    }
-  ]);
-  const [input, setInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
+  const [openId, setOpenId] = useState(1); // Open first question by default
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
-
-  const handleSend = async (text) => {
-    const message = text || input;
-    if (!message.trim() || isTyping) return;
-
-    const userMsg = { id: Date.now(), text: message.trim(), sender: 'user' };
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
-    setIsTyping(true);
-
-    try {
-      const res = await sendChatMessage(message.trim());
-      // Handle both response shapes: res.data.data.response or res.data.response
-      const reply = res?.data?.data?.response || res?.data?.response;
-      setMessages(prev => [...prev, {
-        id: Date.now() + 1,
-        text: reply || 'Response received but was empty. Please try again.',
-        sender: 'bot'
-      }]);
-    } catch (err) {
-      const statusCode = err?.response?.status;
-      const serverMsg = err?.response?.data?.message;
-      let errorText = '';
-
-      if (!err.response) {
-        errorText = '⚠️ Cannot connect to the backend server.\n\nMake sure Flask is running:\n  cd backend\n  .\\venv\\Scripts\\python.exe run.py';
-      } else if (statusCode === 500 && serverMsg?.includes('AI service error')) {
-        errorText = '⚠️ Gemini API error — the API key may be invalid or expired.\n\nPlease update GEMINI_API_KEY in your backend .env file with a valid key from aistudio.google.com';
-      } else {
-        errorText = `⚠️ Server error (${statusCode || 'unknown'}): ${serverMsg || err.message}`;
-      }
-
-      setMessages(prev => [...prev, {
-        id: Date.now() + 1,
-        text: errorText,
-        sender: 'bot',
-        isError: true
-      }]);
-    } finally {
-      setIsTyping(false);
-      inputRef.current?.focus();
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+  const toggleQuestion = (id) => {
+    setOpenId(openId === id ? null : id);
   };
 
   return (
-    <div className="flex flex-col h-screen bg-transparent">
-      {/* Header */}
-      <div className="px-8 pt-8 pb-4 flex-shrink-0">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
-            <Sparkles size={20} className="text-white" />
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="p-8 pb-24 text-white max-w-5xl mx-auto"
+    >
+      {/* Page Header */}
+      <div className="mb-10 text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold uppercase tracking-wider mb-3">
+          <Sparkles size={14} /> AI Career Knowledge Base
+        </div>
+        <h1 className="text-4xl font-extrabold mb-3">
+          Frequently Asked <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent">Career Questions</span>
+        </h1>
+        <p className="text-gray-400 text-base max-w-2xl mx-auto">
+          Explore curated, expert AI answers to the top career, resume, and interview questions.
+        </p>
+      </div>
+
+      {/* Questions List */}
+      <div className="space-y-5">
+        {STANDARD_QUESTIONS.map((q) => {
+          const isOpen = openId === q.id;
+          return (
+            <motion.div
+              key={q.id}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className={`bg-[#1e2128] border rounded-2xl overflow-hidden transition-all duration-300 shadow-xl ${
+                isOpen ? 'border-cyan-500/50 ring-1 ring-cyan-500/30' : 'border-gray-800 hover:border-gray-700'
+              }`}
+            >
+              {/* Question Header Card */}
+              <button
+                onClick={() => toggleQuestion(q.id)}
+                className={`w-full p-6 text-left flex items-start justify-between gap-4 transition-colors ${
+                  isOpen ? 'bg-gray-900/60' : 'hover:bg-gray-900/40'
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`p-3 rounded-xl bg-gray-900 border border-gray-800 flex-shrink-0 mt-0.5`}>
+                    {q.icon}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-md border ${q.badgeColor}`}>
+                        {q.category}
+                      </span>
+                    </div>
+                    <h2 className="text-xl font-bold text-white group-hover:text-cyan-300 transition-colors">
+                      {q.title}
+                    </h2>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {q.summary}
+                    </p>
+                  </div>
+                </div>
+
+                <div className={`p-2 rounded-xl border flex-shrink-0 transition-colors ${
+                  isOpen ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400' : 'bg-gray-900 border-gray-800 text-gray-400'
+                }`}>
+                  {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                </div>
+              </button>
+
+              {/* Answer Content */}
+              <AnimatePresence>
+                {isOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="border-t border-gray-800/80 bg-[#16181f] p-6"
+                  >
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <CheckCircle2 size={14} className="text-cyan-400" /> AI Career Guidance Breakdown
+                    </h3>
+                    <ul className="space-y-3">
+                      {q.answer.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-3 bg-gray-900/50 p-4 rounded-xl border border-gray-800/80 text-sm leading-relaxed text-gray-200">
+                          <span className="w-6 h-6 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
+                            {idx + 1}
+                          </span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Footer Info Box */}
+      <div className="mt-10 p-6 rounded-2xl bg-gray-900/60 border border-gray-800 flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+            <HelpCircle size={20} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">AI Career Agent</h1>
-            <p className="text-sm text-gray-400">Powered by Gemini · Your personal career strategist</p>
-          </div>
-          {/* Live status dot */}
-          <div className="ml-auto flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full">
-            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-sm shadow-emerald-400" />
-            <span className="text-xs text-emerald-400 font-medium">Online</span>
+            <h4 className="text-sm font-bold text-white">Need Customized Guidance?</h4>
+            <p className="text-xs text-gray-400">Upload your resume on the Compare page for tailored job match analytics.</p>
           </div>
         </div>
       </div>
-
-      {/* Chat area */}
-      <div className="flex-1 overflow-y-auto px-8 py-4 space-y-1"
-        style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
-        <AnimatePresence>
-          {messages.map(msg => <MessageBubble key={msg.id} msg={msg} />)}
-        </AnimatePresence>
-        {isTyping && <TypingIndicator />}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Quick Prompts */}
-      {messages.length <= 1 && (
-        <div className="px-8 pb-3 flex gap-2 flex-wrap">
-          {QUICK_PROMPTS.map((p, i) => (
-            <motion.button
-              key={i}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
-              onClick={() => handleSend(p.text)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10
-                text-gray-300 text-xs hover:bg-white/10 hover:border-violet-500/50 hover:text-white
-                transition-all duration-200 cursor-pointer"
-            >
-              <span className="text-violet-400">{p.icon}</span>
-              {p.text}
-            </motion.button>
-          ))}
-        </div>
-      )}
-
-      {/* Input */}
-      <div className="px-8 pb-8 flex-shrink-0">
-        <div className="flex gap-3 items-end bg-white/5 border border-white/10 rounded-2xl px-4 py-3
-          focus-within:border-violet-500/60 focus-within:bg-white/8 transition-all duration-200">
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about interviews, resume tips, skills, career paths..."
-            rows={1}
-            className="flex-1 bg-transparent text-sm text-gray-100 placeholder-gray-500 resize-none
-              focus:outline-none leading-relaxed"
-            style={{ maxHeight: '120px' }}
-            onInput={(e) => {
-              e.target.style.height = 'auto';
-              e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
-            }}
-          />
-          <button
-            onClick={() => handleSend()}
-            disabled={!input.trim() || isTyping}
-            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200
-              bg-gradient-to-br from-violet-500 to-purple-600 hover:from-violet-400 hover:to-purple-500
-              disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-violet-500/30
-              hover:shadow-violet-500/50 hover:scale-105 active:scale-95"
-          >
-            <Send size={16} className="text-white" />
-          </button>
-        </div>
-        <p className="text-center text-xs text-gray-600 mt-2">Press Enter to send · Shift+Enter for new line</p>
-      </div>
-    </div>
+    </motion.div>
   );
 }
