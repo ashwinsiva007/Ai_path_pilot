@@ -13,6 +13,33 @@ from app.utilities.response import success_response, error_response
 
 bp = Blueprint('job', __name__)
 
+# Default Mock Resume Profile for seamless serverless/stateless demo capability
+MOCK_RESUME_DATA = {
+    "FullName": "Ashwin Siva",
+    "EmailAddress": "ashwin@example.com",
+    "PhoneNumber": "+91 98765 43210",
+    "Skills": ["Python", "JavaScript", "React", "Node.js", "Express", "Flask", "SQL", "Git", "HTML", "CSS"],
+    "TechnicalSkills": ["Python", "JavaScript", "React", "Flask", "SQLite", "REST APIs"],
+    "SoftSkills": ["Communication", "Problem Solving", "Team Collaboration"],
+    "Education": ["B.E. Computer Science and Engineering"],
+    "Experience": ["Full Stack Developer Intern @ TechCorp (3 months)"],
+    "Projects": [
+        {
+            "Title": "AI Path Pilot",
+            "Description": "AI-powered career coaching and resume matching platform built with React and Flask.",
+            "TechnologiesUsed": ["React", "Flask", "Gemini API", "SQLite"]
+        }
+    ],
+    "Certifications": ["Google Cloud Digital Leader"],
+    "Achievements": ["First Place in College Hackathon 2025"],
+    "Interests": ["Artificial Intelligence", "Open Source Contribution"],
+    "CareerDomain": "Software Engineering",
+    "PreferredRole": "Full Stack Developer",
+    "ResumeScore": 88,
+    "CareerReadinessScore": 85,
+    "raw_text": "Ashwin Siva. Software Engineer candidate with experience in Python, JavaScript, React, and Flask. Developed AI Path Pilot. B.E. CSE graduate."
+}
+
 @bp.route('/analyze', methods=['POST'])
 def analyze_job():
     data = request.json or {}
@@ -43,10 +70,11 @@ def match_job():
     
     # 1. Read Resume
     resume_record = Resume.query.filter_by(user_id=user_id).first()
-    if not resume_record or not resume_record.parsed_json:
-        return error_response("No parsed resume found in the database. Please upload your resume first.", 404)
-
-    resume_data = resume_record.parsed_json
+    if resume_record and resume_record.parsed_json:
+        resume_data = resume_record.parsed_json
+    else:
+        # Fallback to default mock resume if SQLite is empty
+        resume_data = MOCK_RESUME_DATA
 
     if not job_url and not job_text:
         return error_response("Please provide either a job_url or job_text.", 400)
@@ -133,7 +161,25 @@ def get_report():
     user_id = 1
     report = MatchReport.query.filter_by(user_id=user_id).order_by(MatchReport.id.desc()).first()
     if not report:
-        return error_response("No match reports found for this user.", 404)
+        # Fallback to realistic mock report if SQLite state was cleared by Vercel serverless
+        from app.routes.dashboard import MOCK_MATCH_REPORT
+        return success_response("Match report retrieved successfully.", {
+            "id": 1,
+            "company_name": MOCK_MATCH_REPORT["company_name"],
+            "job_role": MOCK_MATCH_REPORT["job_role"],
+            "job_url": "",
+            "resume_score": 88,
+            "career_readiness": 85,
+            "match_score": MOCK_MATCH_REPORT["match_score"],
+            "matched_skills": MOCK_MATCH_REPORT["matched_skills"],
+            "missing_skills": MOCK_MATCH_REPORT["missing_skills"],
+            "resume_improvements": MOCK_MATCH_REPORT["resume_improvements"],
+            "recommended_courses": MOCK_MATCH_REPORT["recommended_courses"],
+            "learning_roadmap": MOCK_MATCH_REPORT["learning_roadmap"],
+            "should_apply": MOCK_MATCH_REPORT["should_apply"],
+            "reason": MOCK_MATCH_REPORT["reason"],
+            "created_at": "2026-07-22T00:00:00Z"
+        })
 
     return success_response("Match report retrieved successfully.", {
         "id": report.id,

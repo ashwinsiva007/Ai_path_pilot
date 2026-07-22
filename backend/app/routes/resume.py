@@ -94,14 +94,15 @@ def analyze_resume():
 @bp.route('/details', methods=['GET'])
 def get_resume_details():
     try:
-        # Assume user_id = 1 for now
         user_id = 1
         resume_record = Resume.query.filter_by(user_id=user_id).first()
         
-        if not resume_record or not resume_record.parsed_json:
-            return error_response("No resume found for this user.", 404)
+        if resume_record and resume_record.parsed_json:
+            return success_response("Resume details retrieved.", resume_record.parsed_json)
             
-        return success_response("Resume details retrieved.", resume_record.parsed_json)
+        # Return fallback mock resume if no resume exists in database
+        from app.routes.job import MOCK_RESUME_DATA
+        return success_response("Resume details retrieved (mock).", MOCK_RESUME_DATA)
         
     except Exception as e:
         return error_response(f"Failed to retrieve resume details: {str(e)}", 500)
