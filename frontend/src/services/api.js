@@ -24,6 +24,6 @@ export const getSkillGapAnalysis = () => api.get('/skill_gap/analyze');
 export const getLearningRoadmap = () => api.get('/roadmap/generate');
 
 // Chat API
-export const sendChatMessage = (message) => api.post('/chat/send', { message });
+export const sendChatMessage = (message) => api.post('/chat/message', { message });
 
 export default api;

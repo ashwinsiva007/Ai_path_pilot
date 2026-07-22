@@ -1,12 +1,12 @@
 import pandas as pd
 import numpy as np
 import os
+import requests
 from flask import current_app
-import google.generativeai as genai
 
 class SemanticMatcher:
     def __init__(self):
-        pass
+        self.api_key = os.getenv("GEMINI_API_KEY")
 
     def load_opportunities(self):
         # Load CSV files
@@ -29,18 +29,33 @@ class SemanticMatcher:
         return pd.concat([jobs_df, internships_df], ignore_index=True)
 
     def get_embedding(self, text):
-        # Using Gemini text-embedding model
-        result = genai.embed_content(
-            model="models/embedding-001",
-            content=text,
-            task_type="retrieval_document"
-        )
-        return result['embedding']
+        if not self.api_key:
+            self.api_key = os.getenv("GEMINI_API_KEY")
+        
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent?key={self.api_key}"
+        payload = {
+            "content": {
+                "parts": [
+                    {
+                        "text": text
+                    }
+                ]
+            }
+        }
+        headers = {"Content-Type": "application/json"}
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=15)
+            response.raise_for_status()
+            data = response.json()
+            return data["embedding"]["values"]
+        except Exception as e:
+            print(f"Error fetching embedding: {e}")
+            return []
 
     def cosine_similarity(self, vec1, vec2):
         if not vec1 or not vec2:
             return 0.0
-        return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+        return float(np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2)))
 
     def match_opportunities(self, user_profile_json, top_n=10):
         df = self.load_opportunities()
