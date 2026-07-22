@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, FileText, Briefcase, TrendingUp, Map, MessageSquare, MessageCircle, Compass } from 'lucide-react';
+import { LayoutDashboard, FileText, Briefcase, TrendingUp, Map, MessageSquare, MessageCircle, Compass, Shield } from 'lucide-react';
 
 import Dashboard from './pages/Dashboard';
 import ResumeUpload from './pages/ResumeUpload';
@@ -9,15 +9,26 @@ import Opportunities from './pages/Opportunities';
 import LearningRoadmap from './pages/LearningRoadmap';
 import AgentChat from './pages/AgentChat';
 import Compare from './pages/Compare';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import AdminDashboard from './pages/AdminDashboard';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ProtectedRoute, AdminRoute } from './components/ProtectedRoute';
 
 function Sidebar() {
   const location = useLocation();
+  const { user, isAdmin, logout } = useAuth();
+  
   const menuItems = [
     { path: '/', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { path: '/compare', label: 'Compare', icon: <Briefcase size={20} /> },
     { path: '/roadmap', label: 'Roadmap', icon: <Map size={20} /> },
     { path: '/chat', label: 'AI Chat', icon: <MessageSquare size={20} /> },
   ];
+
+  if (isAdmin) {
+    menuItems.push({ path: '/admin', label: 'Admin Panel', icon: <Shield size={20} /> });
+  }
 
   return (
     <div className="w-64 bg-surface border-r border-gray-800 flex flex-col h-screen">
@@ -61,25 +72,58 @@ function Sidebar() {
           </Link>
         ))}
       </nav>
+      <div className="p-4 border-t border-gray-800">
+        <div className="flex items-center justify-between px-2 mb-4">
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-white">{user?.username}</span>
+            <span className="text-xs text-gray-500">{user?.role?.toUpperCase()}</span>
+          </div>
+        </div>
+        <button 
+          onClick={logout}
+          className="w-full py-2 px-4 bg-gray-900 hover:bg-red-500/10 text-gray-400 hover:text-red-400 rounded-lg text-sm font-medium transition-colors border border-gray-800 hover:border-red-500/30"
+        >
+          Sign Out
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AppRoutes() {
+  const { user } = useAuth();
+  const location = useLocation();
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+
+  return (
+    <div className="flex min-h-screen bg-background text-textPrimary font-sans">
+      {!isAuthPage && <Sidebar />}
+      <main className="flex-1 overflow-y-auto">
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          
+          {/* Protected Routes */}
+          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/compare" element={<ProtectedRoute><Compare /></ProtectedRoute>} />
+          <Route path="/roadmap" element={<ProtectedRoute><LearningRoadmap /></ProtectedRoute>} />
+          <Route path="/chat" element={<ProtectedRoute><AgentChat /></ProtectedRoute>} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+        </Routes>
+      </main>
     </div>
   );
 }
 
 function App() {
   return (
-    <Router>
-      <div className="flex min-h-screen bg-background text-textPrimary font-sans">
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/compare" element={<Compare />} />
-            <Route path="/roadmap" element={<LearningRoadmap />} />
-            <Route path="/chat" element={<AgentChat />} />
-          </Routes>
-        </main>
-      </div>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <AppRoutes />
+      </Router>
+    </AuthProvider>
   );
 }
 

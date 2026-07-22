@@ -1,4 +1,5 @@
 from flask import Flask, jsonify
+from flask_jwt_extended import JWTManager
 from .config import Config
 from .extensions import db
 from .utilities.response import error_response
@@ -8,6 +9,7 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
 
     db.init_app(app)
+    jwt = JWTManager(app)
     # Register blueprints first so models are imported!
     from app.routes.auth import bp as auth_bp
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
