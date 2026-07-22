@@ -138,6 +138,8 @@ def match_resume_job():
             return success_response("Comparison successful", final_report)
             
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             db.session.rollback()
             return error_response(f"Failed to parse and match resume: {str(e)}", 500)
             
