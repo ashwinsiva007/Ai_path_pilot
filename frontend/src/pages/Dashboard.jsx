@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { getLinks, updateLinks, scanProfile, uploadResume } from '../services/api';
+import { getLinks, updateLinks, scanProfile, uploadResume, getDashboardSummary } from '../services/api';
 import { FileText, Globe, Briefcase, Terminal, Cpu, Loader2, Sparkles, GraduationCap, Code, BookOpen, ChevronRight } from 'lucide-react';
 
 export default function Dashboard() {
@@ -40,12 +40,29 @@ export default function Dashboard() {
     }
   };
 
+  const [dashboardData, setDashboardData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
-    getLinks().then(res => {
-      setLinks(res.data);
-    }).catch(err => {
-      console.error("Using fallback local state due to backend error", err);
-    });
+    setIsLoading(true);
+    getLinks()
+      .then(res => {
+        setLinks(res.data);
+      })
+      .catch(err => {
+        console.error("Failed to fetch links", err);
+      });
+
+    getDashboardSummary()
+      .then(res => {
+        setDashboardData(res.data);
+      })
+      .catch(err => {
+        console.error("Failed to fetch dashboard summary", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
   const handleSave = async (key, val) => {
@@ -227,6 +244,148 @@ export default function Dashboard() {
           );
         })}
       </div>
+
+      {/* AI Resume & Match Center */}
+      {dashboardData && (dashboardData.resume_score || dashboardData.match_score) && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-10 bg-[#1e2128]/50 border border-gray-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 w-2 bg-gradient-to-b from-blue-500 to-purple-500 h-full"></div>
+          
+          <div className="mb-6 pb-6 border-b border-gray-800">
+            <h2 className="text-2xl font-bold flex items-center space-x-2">
+              <Sparkles className="text-primary" size={24} />
+              <span>AI Career & Match Intelligence</span>
+            </h2>
+            <p className="text-gray-400 text-xs mt-1">Real-time profile feedback and match insights.</p>
+          </div>
+
+          {/* Scores Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+            {dashboardData.resume_score !== null && (
+              <div className="bg-gray-900/60 p-5 rounded-2xl border border-gray-800 text-center flex flex-col justify-center">
+                <span className="text-4xl font-extrabold text-blue-400">{dashboardData.resume_score}</span>
+                <span className="text-xs text-gray-400 mt-2 uppercase tracking-widest">Resume Score</span>
+              </div>
+            )}
+            {dashboardData.career_readiness !== null && (
+              <div className="bg-gray-900/60 p-5 rounded-2xl border border-gray-800 text-center flex flex-col justify-center">
+                <span className="text-4xl font-extrabold text-pink-400">{dashboardData.career_readiness}</span>
+                <span className="text-xs text-gray-400 mt-2 uppercase tracking-widest">Career Readiness</span>
+              </div>
+            )}
+            {dashboardData.match_score !== null && (
+              <div className="bg-gray-900/60 p-5 rounded-2xl border border-gray-800 text-center flex flex-col justify-center bg-gradient-to-br from-primary/5 to-secondary/5 border-primary/20">
+                <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+                  {dashboardData.match_score}%
+                </span>
+                <span className="text-xs text-gray-400 mt-2 uppercase tracking-widest">Latest Job Match</span>
+                {dashboardData.job_role && (
+                  <span className="text-[10px] text-gray-500 mt-1 block truncate">
+                    {dashboardData.job_role} @ {dashboardData.company_name || 'Target'}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* If there is a job match analyzed */}
+          {dashboardData.match_score !== null && (
+            <>
+              {/* Verdict Banner */}
+              <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 flex flex-col items-center text-center mb-8">
+                <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Should you apply?</span>
+                <div className={`text-2xl font-extrabold mb-2 ${
+                  dashboardData.should_apply === 'YES' ? 'text-green-400' : 
+                  dashboardData.should_apply === 'MAYBE' ? 'text-yellow-400' : 'text-red-400'
+                }`}>
+                  {dashboardData.should_apply}
+                </div>
+                <p className="text-gray-300 text-sm leading-relaxed max-w-2xl">{dashboardData.reason}</p>
+              </div>
+
+              {/* Skills columns */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div>
+                  <h3 className="font-semibold text-sm mb-4 text-green-400 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full mr-2"></span> Matched Skills
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {dashboardData.matched_skills?.map((skill, idx) => (
+                      <span key={idx} className="bg-green-500/10 text-green-400 border border-green-500/20 text-xs px-3 py-1 rounded-full">
+                        {skill}
+                      </span>
+                    )) || <span className="text-xs text-gray-500">None</span>}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-sm mb-4 text-yellow-400 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full mr-2"></span> Missing Skills
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {dashboardData.missing_skills?.map((skill, idx) => (
+                      <span key={idx} className="bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 text-xs px-3 py-1 rounded-full">
+                        {skill}
+                      </span>
+                    )) || <span className="text-xs text-gray-500">None</span>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Improvements and courses */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div>
+                  <h3 className="font-semibold text-sm mb-3 text-blue-400 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2"></span> Resume Improvements
+                  </h3>
+                  <ul className="space-y-2 text-xs text-gray-300">
+                    {dashboardData.resume_improvements?.map((item, idx) => (
+                      <li key={idx} className="flex items-start">
+                        <span className="text-blue-500 mr-2">•</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-sm mb-3 text-pink-400 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-pink-400 rounded-full mr-2"></span> Suggested Courses
+                  </h3>
+                  <ul className="space-y-2 text-xs text-gray-300">
+                    {dashboardData.recommended_courses?.map((course, idx) => (
+                      <li key={idx} className="flex items-start">
+                        <span className="text-pink-500 mr-2">•</span>
+                        <span>{course}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Roadmap timeline */}
+              {dashboardData.learning_roadmap && dashboardData.learning_roadmap.length > 0 && (
+                <div className="border-t border-gray-800 pt-6">
+                  <h3 className="font-semibold text-sm mb-4 text-purple-400">Personalized Learning Roadmap</h3>
+                  <div className="relative pl-6 border-l-2 border-purple-500/20 space-y-4">
+                    {dashboardData.learning_roadmap.map((step, idx) => (
+                      <div key={idx} className="relative">
+                        <div className="absolute -left-[31px] top-1.5 w-3 h-3 bg-purple-500 rounded-full border-2 border-[#1e2128]"></div>
+                        <div className="bg-gray-900/40 p-3 rounded-xl border border-gray-800/80">
+                          <p className="text-xs text-gray-300 font-medium">{step}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </motion.div>
+      )}
 
       {/* Action Button */}
       <div className="mt-12 flex justify-center">

@@ -8,6 +8,9 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
 
     db.init_app(app)
+    
+    with app.app_context():
+        db.create_all()
 
     # Register blueprints
     from app.routes.auth import bp as auth_bp
@@ -36,6 +39,9 @@ def create_app(config_class=Config):
 
     from app.routes.compare import bp as compare_bp
     app.register_blueprint(compare_bp, url_prefix='/api/compare')
+
+    from app.routes.job import bp as job_bp
+    app.register_blueprint(job_bp, url_prefix='/api/job')
 
     @app.route('/health')
     def health():
