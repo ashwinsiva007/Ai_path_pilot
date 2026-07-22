@@ -24,7 +24,11 @@ export default function SkillGap() {
     };
     
     getSkillGapAnalysis().then(res => {
-      setAnalysis(res.data || mockData);
+      if (res.data && res.data.skills) {
+        setAnalysis(res.data);
+      } else {
+        setAnalysis(mockData);
+      }
     }).catch(err => {
       console.error(err);
       setAnalysis(mockData);

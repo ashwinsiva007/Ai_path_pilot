@@ -1,25 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 import { getLearningRoadmap } from '../services/api';
-import { CheckCircle, Circle, PlayCircle } from 'lucide-react';
+import { CheckCircle, Circle, PlayCircle, Loader2 } from 'lucide-react';
 
 export default function LearningRoadmap() {
   const [roadmap, setRoadmap] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const location = useLocation();
 
   useEffect(() => {
-    const mockData = [
-      { id: 1, title: 'TypeScript Fundamentals', duration: '2 weeks', status: 'completed' },
-      { id: 2, title: 'Advanced TypeScript Patterns', duration: '3 weeks', status: 'in-progress' },
-      { id: 3, title: 'System Design Interview Prep', duration: '4 weeks', status: 'pending' },
-      { id: 4, title: 'Mock Interviews', duration: '1 week', status: 'pending' },
-    ];
+    const missingSkills = location.state?.missingSkills || ["General Software Engineering"];
     
-    getLearningRoadmap().then(res => {
-      setRoadmap(res.data.roadmap || mockData);
-    }).catch(() => {
-      setRoadmap(mockData);
+    getLearningRoadmap({ skills: missingSkills }).then(res => {
+      setRoadmap(res.data.data.roadmap || []);
+      setIsLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setIsLoading(false);
     });
-  }, []);
+  }, [location]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh]">
+        <Loader2 className="animate-spin text-primary mb-4" size={48} />
+        <h2 className="text-xl text-gray-400">AI is designing your personalized curriculum...</h2>
+      </div>
+    );
+  }
+
+  if (!roadmap || roadmap.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh]">
+        <h2 className="text-xl text-gray-400">No roadmap generated. Try running the Compare Fit tool first!</h2>
+      </div>
+    );
+  }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8 max-w-4xl mx-auto">
@@ -48,17 +65,13 @@ export default function LearningRoadmap() {
                 <h3 className="text-xl font-bold">{step.title}</h3>
                 <span className="text-xs font-medium px-2 py-1 bg-gray-800 rounded text-textSecondary">{step.duration}</span>
               </div>
-              <p className="text-sm text-textSecondary mt-2">
-                {step.status === 'completed' ? 'You have successfully mastered this topic.' :
-                 step.status === 'in-progress' ? 'Continue your learning journey with our curated resources.' :
-                 'Complete previous steps to unlock this module.'}
+              <p className="text-sm text-gray-300 mt-2 leading-relaxed">
+                {step.description || "Master this module to progress in your learning path."}
               </p>
               
-              {step.status === 'in-progress' && (
-                <button className="mt-4 text-sm bg-primary bg-opacity-10 text-primary hover:bg-opacity-20 px-4 py-2 rounded-lg font-medium transition-colors">
-                  Resume Learning
-                </button>
-              )}
+              <button className="mt-4 text-sm bg-primary bg-opacity-10 text-primary hover:bg-opacity-20 px-4 py-2 rounded-lg font-medium transition-colors">
+                Explore Resources
+              </button>
             </div>
           </motion.div>
         ))}

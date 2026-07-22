@@ -6,17 +6,15 @@ import { LayoutDashboard, FileText, Briefcase, TrendingUp, Map, MessageSquare } 
 import Dashboard from './pages/Dashboard';
 import ResumeUpload from './pages/ResumeUpload';
 import Opportunities from './pages/Opportunities';
-import SkillGap from './pages/SkillGap';
 import LearningRoadmap from './pages/LearningRoadmap';
 import AgentChat from './pages/AgentChat';
+import Compare from './pages/Compare';
 
 function Sidebar() {
   const location = useLocation();
   const menuItems = [
     { path: '/', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-    { path: '/resume', label: 'Resume', icon: <FileText size={20} /> },
-    { path: '/opportunities', label: 'Opportunities', icon: <Briefcase size={20} /> },
-    { path: '/skill-gap', label: 'Skill Gap', icon: <TrendingUp size={20} /> },
+    { path: '/compare', label: 'Compare', icon: <Briefcase size={20} /> },
     { path: '/roadmap', label: 'Roadmap', icon: <Map size={20} /> },
     { path: '/chat', label: 'AI Chat', icon: <MessageSquare size={20} /> },
   ];
@@ -56,9 +54,7 @@ function App() {
         <main className="flex-1 overflow-y-auto">
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/resume" element={<ResumeUpload />} />
-            <Route path="/opportunities" element={<Opportunities />} />
-            <Route path="/skill-gap" element={<SkillGap />} />
+            <Route path="/compare" element={<Compare />} />
             <Route path="/roadmap" element={<LearningRoadmap />} />
             <Route path="/chat" element={<AgentChat />} />
           </Routes>

@@ -1,0 +1,171 @@
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { FileText, Link as LinkIcon, UploadCloud, Sparkles, CheckCircle, XCircle, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
+import { compareResumeToJob } from '../services/api';
+
+export default function Compare() {
+  const [jobLink, setJobLink] = useState('');
+  const [resumeFile, setResumeFile] = useState(null);
+  const [isComparing, setIsComparing] = useState(false);
+  const [results, setResults] = useState(null);
+  const navigate = useNavigate();
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setResumeFile(e.target.files[0]);
+    }
+  };
+
+  const handleCompare = async () => {
+    if (!resumeFile || !jobLink) return;
+    setIsComparing(true);
+    setResults(null);
+    
+    const formData = new FormData();
+    formData.append('resume', resumeFile);
+    formData.append('jobLink', jobLink);
+    
+    try {
+      const res = await compareResumeToJob(formData);
+      setResults(res.data.data);
+    } catch (err) {
+      console.error("Comparison failed:", err);
+      alert("Failed to analyze the fit. Make sure the backend is running.");
+    } finally {
+      setIsComparing(false);
+    }
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="p-8 text-white max-w-6xl mx-auto"
+    >
+      <div className="mb-10 text-center">
+        <h1 className="text-4xl font-bold mb-3">Compare <span className="text-primary">Profile Match</span></h1>
+        <p className="text-gray-400 text-lg">Upload your resume and drop a job link to see how well you match the role.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+        
+        {/* Resume Grid Column */}
+        <div className="bg-[#1e2128] border border-gray-800 rounded-2xl p-8 flex flex-col items-center justify-center text-center transition-all hover:border-blue-500 relative">
+          <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mb-4">
+            <FileText className="text-blue-400" size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">Your Resume</h2>
+          <p className="text-gray-400 mb-6 text-sm">Upload your latest PDF or DOCX resume.</p>
+          
+          <label className="cursor-pointer w-full border-2 border-dashed border-gray-600 rounded-xl p-8 hover:bg-gray-800 transition-colors flex flex-col items-center">
+            <UploadCloud size={32} className="text-gray-400 mb-3" />
+            <span className="text-blue-400 font-semibold">{resumeFile ? resumeFile.name : 'Click to Browse or Drag File'}</span>
+            <input type="file" className="hidden" accept=".pdf,.doc,.docx" onChange={handleFileChange} />
+          </label>
+        </div>
+
+        {/* Job Link Grid Column */}
+        <div className="bg-[#1e2128] border border-gray-800 rounded-2xl p-8 flex flex-col items-center justify-center text-center transition-all hover:border-purple-500 relative">
+          <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mb-4">
+            <LinkIcon className="text-purple-400" size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">Job Link</h2>
+          <p className="text-gray-400 mb-6 text-sm">Paste the URL of the job you want to apply for.</p>
+          
+          <div className="w-full flex-1 flex flex-col justify-center">
+            <input 
+              type="url" 
+              placeholder="e.g., https://linkedin.com/jobs/..." 
+              value={jobLink}
+              onChange={(e) => setJobLink(e.target.value)}
+              className="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all text-center"
+            />
+          </div>
+        </div>
+
+      </div>
+
+      <div className="flex justify-center">
+        <button 
+          onClick={handleCompare}
+          disabled={!resumeFile || !jobLink || isComparing}
+          className="flex items-center space-x-3 px-12 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-xl rounded-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-transform"
+        >
+          {isComparing ? <Loader2 size={24} className="animate-spin" /> : <Sparkles size={24} />}
+          <span>{isComparing ? 'Analyzing...' : 'Compare Fit'}</span>
+        </button>
+      </div>
+
+      {results && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-16 bg-[#1e2128] border border-gray-800 rounded-3xl p-10 shadow-2xl relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 w-2 bg-gradient-to-b from-blue-500 to-purple-500 h-full"></div>
+          
+          <div className="flex flex-col md:flex-row items-center justify-between border-b border-gray-800 pb-8 mb-8">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">AI Match Report</h2>
+              <p className="text-gray-400">Here's how your resume stacks up against the job.</p>
+            </div>
+            <div className="mt-6 md:mt-0 flex flex-col items-center">
+              <div className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+                {results.match_score}%
+              </div>
+              <span className="text-sm text-gray-500 uppercase tracking-widest mt-1">Match Score</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            {/* Strengths */}
+            <div>
+              <h3 className="text-xl font-semibold mb-5 flex items-center text-green-400">
+                <CheckCircle className="mr-2" /> Strengths
+              </h3>
+              <ul className="space-y-4">
+                {results.strengths?.map((strength, idx) => (
+                  <li key={idx} className="flex items-start bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                    <CheckCircle size={20} className="text-green-500 mr-3 flex-shrink-0 mt-0.5" />
+                    <span className="text-gray-300 leading-relaxed">{strength}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Missing Skills */}
+            <div>
+              <h3 className="text-xl font-semibold mb-5 flex items-center text-yellow-400">
+                <AlertCircle className="mr-2" /> Missing Skills
+              </h3>
+              <ul className="space-y-4 mb-6">
+                {results.missing_skills?.map((skill, idx) => (
+                  <li key={idx} className="flex items-start bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                    <XCircle size={20} className="text-yellow-500 mr-3 flex-shrink-0 mt-0.5" />
+                    <span className="text-gray-300 leading-relaxed">{skill}</span>
+                  </li>
+                ))}
+              </ul>
+              {results.missing_skills && results.missing_skills.length > 0 && (
+                <button 
+                  onClick={() => navigate('/roadmap', { state: { missingSkills: results.missing_skills } })}
+                  className="w-full py-3 bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 hover:bg-yellow-500/20 rounded-xl flex items-center justify-center font-semibold transition-all"
+                >
+                  Generate Learning Roadmap <ArrowRight className="ml-2" size={20} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Verdict */}
+          <div className="mt-10 bg-gray-900/80 p-6 rounded-2xl border border-gray-700">
+            <h3 className="text-lg font-bold text-white mb-2">Final Verdict</h3>
+            <p className="text-gray-400 leading-relaxed">{results.verdict}</p>
+          </div>
+        </motion.div>
+      )}
+
+    </motion.div>
+  );
+}

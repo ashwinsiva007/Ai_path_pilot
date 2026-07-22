@@ -1,3 +1,6 @@
+import os
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+
 from app import create_app
 
 app = create_app()

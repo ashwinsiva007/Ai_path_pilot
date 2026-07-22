@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('opportunity', __name__)
 
-@bp.route('/list', methods=['GET'])
+@bp.route('/match', methods=['GET'])
 def list_opportunities():
     return jsonify({"message": "List opportunities stub", "opportunities": []}), 200
 
