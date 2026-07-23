@@ -11,7 +11,7 @@ import {
 import { compareResumeToJob, uploadResume, getResumeDetails } from '../services/api';
 
 // ── Set to false to strip dev features before final production release ──
-const SHOW_DEV_FEATURES = true;
+const SHOW_DEV_FEATURES = false;
 
 // ─────────────────────────────────────────────
 // Syntax highlighter (pure regex, no deps)
