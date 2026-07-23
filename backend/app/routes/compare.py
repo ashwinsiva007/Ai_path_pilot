@@ -68,7 +68,8 @@ def match_resume_job():
 
             # Save the detailed resume profile to a JSON file as requested
             import json
-            with open("detailed_resume_profile.json", "w", encoding="utf-8") as f:
+            json_path = os.path.join(tempfile.gettempdir(), "detailed_resume_profile.json")
+            with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(resume_data, f, indent=4)
             
             # Associate with dummy user_id = 1
@@ -80,19 +81,22 @@ def match_resume_job():
                 db.session.commit()
             
             # Replace previous resume record
+            r_score = float(resume_data.get("resume_score", resume_data.get("ResumeScore", 0)))
+            r_readiness = str(resume_data.get("career_readiness", resume_data.get("CareerReadinessScore", 0)))
+            
             resume_record = Resume.query.filter_by(user_id=user_id).first()
             if resume_record:
                 resume_record.filename = filename
                 resume_record.parsed_json = resume_data
-                resume_record.score = float(resume_data.get("ResumeScore", 0))
-                resume_record.readiness = str(resume_data.get("CareerReadinessScore", 0))
+                resume_record.score = r_score
+                resume_record.readiness = r_readiness
             else:
                 resume_record = Resume(
                     user_id=user_id, 
                     filename=filename, 
                     parsed_json=resume_data,
-                    score=float(resume_data.get("ResumeScore", 0)),
-                    readiness=str(resume_data.get("CareerReadinessScore", 0))
+                    score=r_score,
+                    readiness=r_readiness
                 )
                 db.session.add(resume_record)
             
@@ -106,8 +110,15 @@ def match_resume_job():
             matching_results = matching_service.evaluate_match(resume_data, structured_job)
             
             # 5. Skill gap detection
+            r_skills = resume_data.get("skills", resume_data.get("Skills", []))
+            if not r_skills and "technical_skills" in resume_data:
+                # flatten technical_skills if skills is empty
+                for v in resume_data["technical_skills"].values():
+                    if isinstance(v, list):
+                        r_skills.extend(v)
+                        
             skill_gaps = skill_gap_service.detect_gaps(
-                resume_skills=resume_data.get("Skills", []),
+                resume_skills=r_skills,
                 job_skills=structured_job.get("RequiredSkills", []),
                 preferred_skills=structured_job.get("PreferredSkills", [])
             )
@@ -128,8 +139,8 @@ def match_resume_job():
             
             # Formulate final response
             final_report = {
-                "resume_score": resume_data.get("ResumeScore", 80),
-                "career_readiness": resume_data.get("CareerReadinessScore", 80),
+                "resume_score": r_score,
+                "career_readiness": r_readiness,
                 "match_score": matching_results.get("overall_match", 75),
                 "matched_skills": skill_gaps.get("matched_skills", []),
                 "missing_skills": skill_gaps.get("missing_skills", []),
@@ -137,7 +148,8 @@ def match_resume_job():
                 "recommended_courses": roadmap_data.get("recommended_courses", []),
                 "learning_roadmap": roadmap_data.get("plan_7_day", []) + roadmap_data.get("plan_30_day", []),
                 "should_apply": recommendations.get("should_apply", "MAYBE"),
-                "reason": recommendations.get("reason", "Matches well with key requirements.")
+                "reason": recommendations.get("reason", "Matches well with key requirements."),
+                "resume_profile": resume_data
             }
             
             # Save report to db
