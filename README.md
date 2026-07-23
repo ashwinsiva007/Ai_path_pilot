@@ -162,7 +162,7 @@ ai-path-pilot/
 
 ### **1. Clone the Repository**
 ```bash
-git clone https://github.com/kumaran-dee/ai-path-pilot.git
+git clone https://github.com/ashwinsiva007/Ai_path_pilot.git
 cd ai-path-pilot
 ```
 
