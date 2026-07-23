@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getLinks, updateLinks, scanProfile, uploadResume } from '../services/api';
 import { 
   FileText, Globe, Briefcase, Terminal, Cpu, Loader2, Sparkles, 
-  MessageCircle, ExternalLink, XCircle
+  MessageCircle, ExternalLink, XCircle, X
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -146,6 +146,15 @@ export default function Dashboard() {
                   </span>
                   <input type="file" className="hidden" accept=".pdf,.doc,.docx" onChange={handleFileUpload} disabled={isUploading} />
                 </label>
+                {links.resume && (
+                  <button 
+                    onClick={(e) => { e.preventDefault(); handleSave('resume', null); }}
+                    className="absolute top-2 right-2 p-1 text-gray-500 hover:text-red-400 bg-[#1e2128] rounded-full hover:bg-gray-800 transition-colors z-10"
+                    title="Remove Resume"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
               </div>
             );
           }
