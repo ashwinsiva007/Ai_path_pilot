@@ -82,6 +82,50 @@ function InfoRow({ label, value }) {
 function StructuredResumeViewer({ data }) {
   if (!data) return null;
 
+  // Flatten and map the new nested snake_case schema to the expected PascalCase structure for the UI
+  const mappedData = {
+    ResumeScore: data.resume_score ?? data.ResumeScore,
+    CareerReadinessScore: data.career_readiness ?? data.CareerReadinessScore,
+    FullName: data.personal_information?.full_name ?? data.FullName,
+    CareerDomain: data.career_domain ?? data.CareerDomain,
+    PreferredRoles: data.preferred_roles ?? data.PreferredRoles,
+    YearsOfExperience: data.additional_metadata?.years_of_experience ?? data.YearsOfExperience,
+    Location: data.contact_details?.location ?? data.Location,
+    EmailAddress: data.contact_details?.email ?? data.EmailAddress,
+    PhoneNumber: data.contact_details?.phone ?? data.PhoneNumber,
+    LinkedInURL: data.contact_details?.linkedin ?? data.LinkedInURL,
+    GitHubURL: data.contact_details?.github ?? data.GitHubURL,
+    PortfolioURL: data.contact_details?.portfolio ?? data.PortfolioURL,
+    TechnicalSkills: data.technical_skills ? Object.values(data.technical_skills).flat() : data.TechnicalSkills,
+    Skills: data.skills ?? data.Skills,
+    SoftSkills: data.soft_skills ?? data.SoftSkills,
+    Languages: data.languages ?? data.Languages,
+    Education: (data.education || data.Education || []).map(e => ({
+      Degree: e.degree || e.Degree,
+      FieldOfStudy: e.field_of_study || e.FieldOfStudy || '',
+      Institution: e.institution || e.Institution,
+      Year: e.year || e.Year,
+      CGPA: e.cgpa || e.CGPA
+    })),
+    Experience: (data.experience || data.Experience || []).map(e => ({
+      Title: e.role || e.Title,
+      Company: e.company || e.Company,
+      Duration: e.duration || e.Duration,
+      Description: e.description || e.Description
+    })),
+    Projects: (data.projects || data.Projects || []).map(p => ({
+      Title: p.name || p.Title,
+      Link: p.link || p.Link,
+      Description: p.description || p.Description,
+      TechnologiesUsed: p.tech_stack || p.TechnologiesUsed
+    })),
+    Certifications: data.certifications ?? data.Certifications,
+    Achievements: data.achievements ?? data.Achievements,
+    Research: data.research ?? data.Research
+  };
+
+  data = mappedData;
+
   const scoreColor = (s) =>
     s >= 80 ? 'text-emerald-400' : s >= 60 ? 'text-yellow-400' : 'text-red-400';
 
