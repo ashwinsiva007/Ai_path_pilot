@@ -288,8 +288,12 @@ export default function Dashboard() {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      await uploadResume(formData);
+      const res = await uploadResume(formData);
       setLinks(prev => ({ ...prev, resume: file.name }));
+      // Store the parsed profile directly from the upload response
+      if (res.data?.data) {
+        setResumeProfile(res.data.data);
+      }
     } catch (err) {
       console.error("Upload failed", err);
     } finally {
@@ -298,22 +302,26 @@ export default function Dashboard() {
   };
 
   const handleScan = async () => {
+    // If we already have profile from upload, just scroll/reveal it
+    if (resumeProfile) {
+      // Re-trigger animation by clearing and resetting
+      const saved = resumeProfile;
+      setResumeProfile(null);
+      setTimeout(() => setResumeProfile(saved), 100);
+      return;
+    }
     if (!resumeFileRef.current) {
-      setScanError('Please upload your resume PDF first, then click Scan Profile.');
+      setScanError('Please upload your resume PDF first.');
       return;
     }
     setIsScanning(true);
-    setResumeProfile(null);
     setScanError('');
     try {
-      // Use compare endpoint with a dummy job link to extract resume profile
       const formData = new FormData();
-      formData.append('resume', resumeFileRef.current);
-      formData.append('jobLink', 'https://www.linkedin.com/jobs/');
-      const res = await compareResumeToJob(formData);
-      const data = res.data?.data;
-      if (data?.resume_profile) {
-        setResumeProfile(data.resume_profile);
+      formData.append('file', resumeFileRef.current);
+      const res = await uploadResume(formData);
+      if (res.data?.data) {
+        setResumeProfile(res.data.data);
       } else {
         setScanError('Could not extract profile. Please try again.');
       }
