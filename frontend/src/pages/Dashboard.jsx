@@ -334,7 +334,7 @@ export default function Dashboard() {
                   </div>
                   
                   <div className="mb-4">
-                    <span className="text-xs text-gray-500 uppercase tracking-widest">Username / Name</span>
+                    <span className="text-xs text-gray-500 uppercase tracking-widest">Name</span>
                     <p className="text-white font-medium truncate">{data.username}</p>
                   </div>
 
