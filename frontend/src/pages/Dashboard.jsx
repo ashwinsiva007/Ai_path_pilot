@@ -97,24 +97,8 @@ function ResumeProfileViewer({ data }) {
   const achievements = data.achievements || data.Achievements || [];
   const languages = data.languages || data.Languages || [];
 
-  const scoreColor = (s) => s >= 80 ? 'text-emerald-400' : s >= 60 ? 'text-yellow-400' : 'text-red-400';
-
   return (
     <div className="space-y-1">
-      {/* Score Tiles */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        {[
-          { label: 'Resume Score', value: resumeScore, suffix: '/100' },
-          { label: 'Career Readiness', value: careerReadiness, suffix: '/100' },
-        ].map(({ label, value, suffix }) => (
-          <div key={label} className="bg-gray-900/80 rounded-2xl border border-gray-800 p-5 text-center">
-            <div className={`text-5xl font-extrabold ${scoreColor(value)}`}>
-              {value}<span className="text-lg text-gray-500 font-normal">{suffix}</span>
-            </div>
-            <div className="text-xs text-gray-500 mt-2 uppercase tracking-widest">{label}</div>
-          </div>
-        ))}
-      </div>
 
       {/* Personal Information */}
       <Section icon={User} title="Personal Information" color="text-sky-400">
@@ -482,17 +466,11 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="mt-12 bg-[#1e2128] border border-gray-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden"
+            className="mt-12"
           >
-            <div className="absolute top-0 left-0 w-2 bg-gradient-to-b from-cyan-500 to-blue-600 h-full" />
-            <div className="flex items-center gap-3 mb-8 pb-6 border-b border-gray-800">
-              <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center">
-                <Sparkles size={20} className="text-blue-400" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-white">AI Resume Profile</h2>
-                <p className="text-gray-400 text-sm">Extracted from your uploaded resume</p>
-              </div>
+            <div className="flex items-center gap-3 mb-6">
+              <FileText size={22} className="text-cyan-400" />
+              <h2 className="text-xl font-bold text-white">Resume Details</h2>
             </div>
             <ResumeProfileViewer data={resumeProfile} />
           </motion.div>
